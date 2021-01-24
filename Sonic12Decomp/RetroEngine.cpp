@@ -5,6 +5,52 @@ bool engineDebugMode = false;
 
 RetroEngine Engine = RetroEngine();
 
+#if RETRO_USING_SDL1 || RETRO_USING_SDL2
+
+Uint32 Retro_GetTicks(void)
+{
+    return SDL_GetTicks();
+}
+
+void Retro_Delay(Uint32 ms)
+{
+    SDL_Delay(ms);
+}
+
+void Retro_InitTicks(void)
+{
+
+}
+
+#else
+
+#include <sys/time.h>
+#include <unistd.h>
+
+struct timeval initTv;
+
+Uint32 Retro_GetTicks(void)
+{
+    struct timeval curTv;
+	
+    gettimeofday(&curTv, NULL);
+	
+    return (curTv.tv_sec - initTv.tv_sec) * 1000 +
+		(curTv.tv_usec - initTv.tv_usec) / 1000;
+}
+
+void Retro_Delay(Uint32 ms)
+{
+    usleep(ms * 1000);
+}
+
+void Retro_InitTicks(void)
+{
+    gettimeofday(&initTv, NULL);
+}
+
+#endif
+
 inline int getLowerRate(int intendRate, int targetRate)
 {
     int result   = 0;
@@ -439,17 +485,17 @@ void RetroEngine::Init()
 
 void RetroEngine::Run()
 {
-    uint frameStart, frameEnd = SDL_GetTicks();
+    uint frameStart, frameEnd = Retro_GetTicks();
     float frameDelta = 0.0f;
 
     while (running) {
-        frameStart = SDL_GetTicks();
+        frameStart = Retro_GetTicks();
         frameDelta = frameStart - frameEnd;
 
         if (frameDelta < 1000.0f / (float)refreshRate)
-            SDL_Delay(1000.0f / (float)refreshRate - frameDelta);
+            Retro_Delay(1000.0f / (float)refreshRate - frameDelta);
 
-        frameEnd = SDL_GetTicks();
+        frameEnd = Retro_GetTicks();
 
         running = processEvents();
         for (int s = 0; s < gameSpeed; ++s) {

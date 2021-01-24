@@ -1,6 +1,8 @@
 #ifndef DEBUG_H
 #define DEBUG_H
 
+#include <stdarg.h>
+
 extern bool endLine;
 inline void printLog(const char *msg, ...)
 {

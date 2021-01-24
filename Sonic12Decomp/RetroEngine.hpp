@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <cmath>
+#include <wchar.h>
 
 // ================
 // STANDARD TYPES
@@ -19,6 +20,15 @@ typedef signed char sbyte;
 typedef unsigned short ushort;
 typedef unsigned int uint;
 // typedef unsigned long long ulong;
+
+#if !defined(RETRO_USING_SDL2) && !defined(RETRO_USING_SDL1)
+typedef int8_t Sint8;
+typedef int16_t Sint16;
+typedef int32_t Sint32;
+typedef u_int8_t Uint8;
+typedef u_int16_t Uint16;
+typedef u_int32_t Uint32;
+#endif
 
 #define RETRO_USE_NETWORKING (0)
 #if !RETRO_USE_NETWORKING
@@ -88,12 +98,16 @@ typedef unsigned int uint;
 #define BASE_PATH            ""
 #endif
 
+#ifndef RETRO_USING_ALLEGRO4
+
 #if RETRO_PLATFORM == RETRO_WIN || RETRO_PLATFORM == RETRO_OSX || RETRO_PLATFORM == RETRO_VITA || RETRO_PLATFORM == RETRO_UWP
 #define RETRO_USING_SDL1 (0)
 #define RETRO_USING_SDL2 (1)
 #else // Since its an else & not an elif these platforms probably aren't supported yet
 #define RETRO_USING_SDL1 (0)
 #define RETRO_USING_SDL2 (0)
+#endif
+
 #endif
 
 #if RETRO_PLATFORM == RETRO_iOS || RETRO_PLATFORM == RETRO_ANDROID || RETRO_PLATFORM == RETRO_WP7
@@ -177,6 +191,10 @@ enum RetroGameType {
 
 #endif
 
+#if RETRO_USING_ALLEGRO4
+#include <allegro.h>
+#endif
+
 extern bool usingCWD;
 extern bool engineDebugMode;
 
@@ -205,6 +223,10 @@ extern bool engineDebugMode;
 // Native Entities
 #include "PauseMenu.hpp"
 #include "RetroGameLoop.hpp"
+
+Uint32 Retro_GetTicks(void);
+void Retro_Delay(Uint32 ms);
+void Retro_InitTicks(void);
 
 class RetroEngine
 {

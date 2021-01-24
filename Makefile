@@ -1,9 +1,3 @@
-CXXFLAGS_ALL = $(shell pkg-config --cflags --static sdl2 vorbisfile vorbis) $(CXXFLAGS) \
-               -DBASE_PATH='"$(BASE_PATH)"'
-
-LDFLAGS_ALL = $(LDFLAGS)
-LIBS_ALL = $(shell pkg-config --libs --static sdl2 vorbisfile vorbis) -pthread $(LIBS)
-
 SOURCES = Sonic12Decomp/Animation.cpp     \
           Sonic12Decomp/Audio.cpp         \
           Sonic12Decomp/Collision.cpp     \
@@ -27,7 +21,19 @@ SOURCES = Sonic12Decomp/Animation.cpp     \
           Sonic12Decomp/String.cpp        \
           Sonic12Decomp/Text.cpp          \
           Sonic12Decomp/Userdata.cpp      \
-	  
+
+ifneq ($(USE_ALLEGRO4),)
+	CXXFLAGS_ALL = $(shell pkg-config --cflags vorbisfile vorbis) $(shell allegro-config --cppflags) $(CXXFLAGS) \
+               -DBASE_PATH='"$(BASE_PATH)"' -DRETRO_USING_ALLEGRO4 $(CXXFLAGS)
+	LDFLAGS_ALL = $(LDFLAGS)
+	LIBS_ALL = $(shell pkg-config --libs vorbisfile vorbis) $(shell allegro-config --libs) -pthread $(LIBS)	
+else
+	CXXFLAGS_ALL = $(shell pkg-config --cflags --static sdl2 vorbisfile vorbis) $(CXXFLAGS) \
+               -DBASE_PATH='"$(BASE_PATH)"' $(CXXFLAGS)
+	LDFLAGS_ALL = $(LDFLAGS)
+	LIBS_ALL = $(shell pkg-config --libs --static sdl2 vorbisfile vorbis) -pthread $(LIBS)
+endif
+
 ifneq ($(FORCE_CASE_INSENSITIVE),)
 	CXXFLAGS_ALL += -DFORCE_CASE_INSENSITIVE
 	SOURCES += Sonic12Decomp/fcaseopen.c

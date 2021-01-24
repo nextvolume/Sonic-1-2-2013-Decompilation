@@ -7,6 +7,30 @@
 
 #define MAX_VOLUME (100)
 
+#if RETRO_USING_SDL1 || RETRO_USING_SDL2
+
+#if RETRO_USING_SDL2
+SDL_AudioDeviceID audioDevice;
+#endif
+SDL_AudioSpec audioDeviceFormat;
+
+#define LOCK_AUDIO_DEVICE() SDL_LockAudio();
+#define UNLOCK_AUDIO_DEVICE() SDL_UnlockAudio();
+
+#define AUDIO_FREQUENCY (44100)
+#define AUDIO_FORMAT    (AUDIO_S16SYS) /**< Signed 16-bit samples */
+#define AUDIO_SAMPLES   (0x800)
+#define AUDIO_CHANNELS  (2)
+
+#define ADJUST_VOLUME(s, v) (s = (s * v) / MAX_VOLUME)
+
+#else
+#define LOCK_AUDIO_DEVICE() ;
+#define UNLOCK_AUDIO_DEVICE() ;
+#endif
+
+#define MIX_BUFFER_SAMPLES (256)
+
 struct TrackInfo {
     char fileName[0x40];
     bool trackLoop;
@@ -111,21 +135,21 @@ inline void freeMusInfo()
     }
 }
 #else
-void ProcessMusicStream() {}
-void ProcessAudioPlayback() {}
-void ProcessAudioMixing() {}
+void ProcessMusicStream();
+void ProcessAudioPlayback();
+void ProcessAudioMixing();
 
 inline void freeMusInfo()
 {
     if (musInfo.loaded) {
-        if (musInfo.musicFile)
-            delete[] musInfo.musicFile;
-        musInfo.musicFile    = nullptr;
+  //      if (musInfo.musicFile)
+  //          delete[] musInfo.musicFile;
+    //    musInfo.musicFile    = nullptr;
         musInfo.buffer       = nullptr;
-        musInfo.stream       = nullptr;
-        musInfo.pos          = 0;
-        musInfo.len          = 0;
-        musInfo.currentTrack = nullptr;
+     //   musInfo.stream       = nullptr;
+     //   musInfo.pos          = 0;
+     //   musInfo.len          = 0;
+     //   musInfo.currentTrack = nullptr;
         musInfo.loaded       = false;
     }
 }
@@ -137,9 +161,13 @@ bool PlayMusic(int track, int musStartPos);
 inline void StopMusic()
 {
     musicStatus = MUSIC_STOPPED;
+#if RETRO_USING_SDL1 || RETRO_USING_SDL2	
     SDL_LockAudio();
+#endif
     freeMusInfo();
+#if RETRO_USING_SDL1 || RETRO_USING_SDL2
     SDL_UnlockAudio();
+#endif
 }
 
 void LoadSfx(char *filePath, byte sfxID);
@@ -198,13 +226,9 @@ inline void ResumeSound()
 
 inline void StopAllSfx()
 {
-#if RETRO_USING_SDL1 || RETRO_USING_SDL2
-    SDL_LockAudio();
-#endif
+    LOCK_AUDIO_DEVICE()
     for (int i = 0; i < CHANNEL_COUNT; ++i) sfxChannels[i].sfxID = -1;
-#if RETRO_USING_SDL1 || RETRO_USING_SDL2
-    SDL_UnlockAudio();
-#endif
+    UNLOCK_AUDIO_DEVICE()
 }
 inline void ReleaseGlobalSfx()
 {

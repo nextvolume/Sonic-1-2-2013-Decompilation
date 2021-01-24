@@ -25,29 +25,7 @@ MusicPlaybackInfo musInfo;
 
 int trackBuffer = -1;
 
-#if RETRO_USING_SDL1 || RETRO_USING_SDL2
 
-#if RETRO_USING_SDL2
-SDL_AudioDeviceID audioDevice;
-#endif
-SDL_AudioSpec audioDeviceFormat;
-
-#define LOCK_AUDIO_DEVICE() SDL_LockAudio();
-#define UNLOCK_AUDIO_DEVICE() SDL_UnlockAudio();
-
-#define AUDIO_FREQUENCY (44100)
-#define AUDIO_FORMAT    (AUDIO_S16SYS) /**< Signed 16-bit samples */
-#define AUDIO_SAMPLES   (0x800)
-#define AUDIO_CHANNELS  (2)
-
-#define ADJUST_VOLUME(s, v) (s = (s * v) / MAX_VOLUME)
-
-#else
-#define LOCK_AUDIO_DEVICE() ;
-#define UNLOCK_AUDIO_DEVICE() ;
-#endif
-
-#define MIX_BUFFER_SAMPLES (256)
 
 int InitAudioPlayback()
 {
@@ -356,10 +334,12 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
             unsigned long long samples = 0;
             ov_callbacks callbacks;
 
+#if RETRO_USING_SDL2 || RETRO_USING_SDL1		
             callbacks.read_func  = readVorbis;
             callbacks.seek_func  = seekVorbis;
             callbacks.tell_func  = tellVorbis;
             callbacks.close_func = closeVorbis;
+#endif
 
             int error = ov_open_callbacks(&musInfo, &musInfo.vorbisFile, NULL, 0, callbacks);
             if (error != 0) {
@@ -579,6 +559,7 @@ void LoadSfx(char *filePath, byte sfxID)
     if (!audioEnabled)
         return;
 
+#if RETRO_USING_SDL2 || RETRO_USING_SDL1    
     FileInfo info;
     char fullPath[0x80];
 
@@ -732,6 +713,7 @@ void LoadSfx(char *filePath, byte sfxID)
             printLog("Sfx format not supported!");
         }
     }
+#endif
 }
 void PlaySfx(int sfx, bool loop)
 {
