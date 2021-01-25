@@ -28,20 +28,23 @@ void Retro_InitTicks(void)
 #include <unistd.h>
 
 struct timeval initTv;
+struct timeval curTv;
 
 Uint32 Retro_GetTicks(void)
-{
-    struct timeval curTv;
-	
+{	
     gettimeofday(&curTv, NULL);
 	
-    return (curTv.tv_sec - initTv.tv_sec) * 1000 +
-		(curTv.tv_usec - initTv.tv_usec) / 1000;
+    return ((curTv.tv_sec - initTv.tv_sec) * 1000) +
+		((curTv.tv_usec - initTv.tv_usec) / 1000);
+	
+	//1 001000 = 1001
+	
+	
 }
 
 void Retro_Delay(Uint32 ms)
 {
-    usleep(ms * 1000);
+    //usleep(ms);
 }
 
 void Retro_InitTicks(void)
@@ -483,21 +486,33 @@ void RetroEngine::Init()
         initStartMenu(0);
 }
 
+#if RETRO_USING_ALLEGRO4
+volatile int display_frame=0;
+
+void display_frame_handler(void) 
+{
+    display_frame++;
+}
+END_OF_FUNCTION(display_frame_handler)
+#endif
+
 void RetroEngine::Run()
 {
-    uint frameStart, frameEnd = Retro_GetTicks();
+#if RETRO_USING_SDL1 || RETRO_USING_SDL2	
+    uint frameStart, frameEnd = SDL_GetTicks();
     float frameDelta = 0.0f;
 
     while (running) {
-        frameStart = Retro_GetTicks();
+        frameStart = SDL_GetTicks();
         frameDelta = frameStart - frameEnd;
 
         if (frameDelta < 1000.0f / (float)refreshRate)
-            Retro_Delay(1000.0f / (float)refreshRate - frameDelta);
+            SDL_Delay(1000.0f / (float)refreshRate - frameDelta);
 
-        frameEnd = Retro_GetTicks();
+        frameEnd = SDL_GetTicks();
 
         running = processEvents();
+		
         for (int s = 0; s < gameSpeed; ++s) {
             ProcessInput();
 
@@ -508,6 +523,53 @@ void RetroEngine::Run()
             }
         }
     }
+#endif
+
+#if RETRO_USING_ALLEGRO4
+   // printf("OK!\n");
+
+    LOCK_VARIABLE(display_frame);
+    LOCK_FUNCTION(display_frame_handler);
+    install_int_ex(display_frame_handler, BPS_TO_TIMER(refreshRate));
+   
+    inputDevice[INPUT_UP].keyMappings = KEY_UP;
+    inputDevice[INPUT_DOWN].keyMappings = KEY_DOWN;
+    inputDevice[INPUT_LEFT].keyMappings = KEY_LEFT;
+    inputDevice[INPUT_RIGHT].keyMappings = KEY_RIGHT;
+    inputDevice[INPUT_BUTTONA].keyMappings = KEY_Z;
+    inputDevice[INPUT_BUTTONB].keyMappings = KEY_X;
+    inputDevice[INPUT_BUTTONC].keyMappings = KEY_C;
+    inputDevice[INPUT_BUTTONX].keyMappings = KEY_A;
+    inputDevice[INPUT_BUTTONY].keyMappings = KEY_S;
+    inputDevice[INPUT_BUTTONZ].keyMappings = KEY_D;
+    inputDevice[INPUT_BUTTONL].keyMappings = KEY_Q;
+    inputDevice[INPUT_BUTTONR].keyMappings = KEY_W;
+    inputDevice[INPUT_START].keyMappings = KEY_ENTER;
+    inputDevice[INPUT_SELECT].keyMappings = KEY_SPACE;
+
+	printf("gameSpeed = %d\n", gameSpeed);
+
+
+    while (running) {
+	if (display_frame) {
+	    RenderRenderDevice();
+
+	    while(display_frame > 0) {
+	
+	    for (int s = 0; s < gameSpeed; ++s) {
+	        ProcessInput();
+		
+	        if (!masterPaused || frameStep) {
+                    ProcessNativeObjects();
+		    frameStep = false;
+	        }
+	    }
+		
+            display_frame--;
+            } 
+        }
+    }
+#endif
 
     ReleaseAudioDevice();
     ReleaseRenderDevice();

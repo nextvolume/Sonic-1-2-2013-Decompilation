@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #include "RetroEngine.hpp"
 #include <stdlib.h>
 #include <algorithm>

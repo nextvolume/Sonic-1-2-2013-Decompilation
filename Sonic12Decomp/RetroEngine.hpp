@@ -22,12 +22,13 @@ typedef unsigned int uint;
 // typedef unsigned long long ulong;
 
 #if !defined(RETRO_USING_SDL2) && !defined(RETRO_USING_SDL1)
-typedef int8_t Sint8;
-typedef int16_t Sint16;
-typedef int32_t Sint32;
-typedef u_int8_t Uint8;
-typedef u_int16_t Uint16;
-typedef u_int32_t Uint32;
+
+typedef signed char Sint8;
+typedef signed short Sint16;
+typedef signed int Sint32;
+typedef unsigned char Uint8;
+typedef unsigned short Uint16;
+typedef unsigned int Uint32;
 #endif
 
 #define RETRO_USE_NETWORKING (0)
@@ -192,7 +193,9 @@ enum RetroGameType {
 #endif
 
 #if RETRO_USING_ALLEGRO4
+   extern "C" {
 #include <allegro.h>
+ }
 #endif
 
 extern bool usingCWD;
@@ -340,6 +343,11 @@ public:
     SDL_Surface *screenBuffer2x = nullptr;
 
     SDL_Event sdlEvents;
+#endif
+
+#if RETRO_USING_ALLEGRO4
+    BITMAP *frameBufferCvt = NULL;
+    BITMAP *screenBuffer = NULL;
 #endif
 };
 

@@ -10,9 +10,9 @@
 #if RETRO_USING_SDL1 || RETRO_USING_SDL2
 
 #if RETRO_USING_SDL2
-SDL_AudioDeviceID audioDevice;
+extern SDL_AudioDeviceID audioDevice;
 #endif
-SDL_AudioSpec audioDeviceFormat;
+extern SDL_AudioSpec audioDeviceFormat;
 
 #define LOCK_AUDIO_DEVICE() SDL_LockAudio();
 #define UNLOCK_AUDIO_DEVICE() SDL_UnlockAudio();
@@ -99,9 +99,9 @@ extern ChannelInfo sfxChannels[CHANNEL_COUNT];
 
 extern MusicPlaybackInfo musInfo;
 
-#if RETRO_USING_SDL1 || RETRO_USING_SDL2
-extern SDL_AudioSpec audioDeviceFormat;
-#endif
+//#if RETRO_USING_SDL1 || RETRO_USING_SDL2
+//extern SDL_AudioSpec audioDeviceFormat;
+//#endif
 
 int InitAudioPlayback();
 

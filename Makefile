@@ -23,12 +23,18 @@ SOURCES = Sonic12Decomp/Animation.cpp     \
           Sonic12Decomp/Userdata.cpp      \
 
 ifneq ($(USE_ALLEGRO4),)
-	CXXFLAGS_ALL = $(shell pkg-config --cflags vorbisfile vorbis) $(shell allegro-config --cppflags) $(CXXFLAGS) \
-               -DBASE_PATH='"$(BASE_PATH)"' -DRETRO_USING_ALLEGRO4 $(CXXFLAGS)
-	LDFLAGS_ALL = $(LDFLAGS)
-	LIBS_ALL = $(shell pkg-config --libs vorbisfile vorbis) $(shell allegro-config --libs) -pthread $(LIBS)	
+	ifneq ($(DOS),)
+		CXXFLAGS_ALL = -DBASE_PATH='"$(BASE_PATH)"' -DRETRO_USING_ALLEGRO4 $(CXXFLAGS)
+		LDFLAGS_ALL = $(LDFLAGS)
+		LIBS_ALL = -lalleg  -lvorbisfile -lvorbisenc -lvorbis -logg $(LIBS)
+	else
+		CXXFLAGS_ALL = $(shell pkg-config --cflags vorbisfile vorbis) $(shell allegro-config --cppflags) \
+		-DBASE_PATH='"$(BASE_PATH)"' -DRETRO_USING_ALLEGRO4 $(CXXFLAGS)
+		LDFLAGS_ALL = $(LDFLAGS)
+		LIBS_ALL = $(shell pkg-config --libs vorbisfile vorbis) $(shell allegro-config --libs) $(LIBS)	
+	endif
 else
-	CXXFLAGS_ALL = $(shell pkg-config --cflags --static sdl2 vorbisfile vorbis) $(CXXFLAGS) \
+	CXXFLAGS_ALL = $(shell pkg-config --cflags --static sdl2 vorbisfile vorbis) \
                -DBASE_PATH='"$(BASE_PATH)"' $(CXXFLAGS)
 	LDFLAGS_ALL = $(LDFLAGS)
 	LIBS_ALL = $(shell pkg-config --libs --static sdl2 vorbisfile vorbis) -pthread $(LIBS)

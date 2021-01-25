@@ -182,6 +182,24 @@ void ProcessInput()
     if (!flag && inputType == 1) {
         inputDevice[INPUT_ANY].setReleased();
     }
+#elif RETRO_USING_ALLEGRO4
+    bool aKeyWasPressed = false;
+
+    if (inputType == 0) {
+        for (int i = 0; i < INPUT_MAX; i++) {
+            if (key[inputDevice[i].keyMappings]) {
+                inputDevice[i].setHeld();
+                inputDevice[INPUT_ANY].setHeld();
+		aKeyWasPressed = true;
+                continue;
+            }
+            else if (inputDevice[i].hold)
+                inputDevice[i].setReleased();
+        }
+    }
+    
+    if (!aKeyWasPressed)
+        inputDevice[INPUT_ANY].setReleased();
 #endif
 }
 

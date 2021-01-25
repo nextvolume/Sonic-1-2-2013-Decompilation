@@ -4,7 +4,7 @@ short blendLookupTable[BLENDTABLE_SIZE];
 short subtractLookupTable[BLENDTABLE_SIZE];
 short tintLookupTable[TINTTABLE_SIZE];
 
-int SCREEN_XSIZE   = 424;
+int SCREEN_XSIZE   = 424 ;
 int SCREEN_CENTERX = 424 / 2;
 
 DrawListEntry drawListEntries[DRAWLAYER_COUNT];
@@ -134,6 +134,36 @@ int InitRenderDevice()
 
     // SDL_SetWindowPosition(Engine.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
+    Engine.useHQModes = false; // disabled
+    Engine.borderless = false; // disabled
+#endif
+
+#if RETRO_USING_ALLEGRO4
+    allegro_init();
+    
+    install_keyboard();
+    install_mouse();
+    
+    set_gfx_mode(GFX_AUTODETECT_FULLSCREEN,
+        SCREEN_XSIZE * Engine.windowScale, SCREEN_YSIZE * Engine.windowScale,
+	0, 0);
+    set_color_depth(16);
+    
+    Engine.isFullScreen = Engine.startFullScreen;
+    
+    Engine.frameBufferCvt =
+        create_bitmap(SCREEN_XSIZE, SCREEN_YSIZE);
+    
+    Engine.screenBuffer =
+	create_bitmap(SCREEN_W, SCREEN_H);
+
+    if (!Engine.screenBuffer) {
+        printLog("ERROR: failed to create screen buffer!");
+        return 0;
+    }
+    
+    set_window_title(gameTitle);
+    
     Engine.useHQModes = false; // disabled
     Engine.borderless = false; // disabled
 #endif
@@ -307,6 +337,30 @@ void RenderRenderDevice()
     // Update Screen
     SDL_Flip(Engine.windowSurface);
 #endif
+
+#if RETRO_USING_ALLEGRO4
+    ushort *p = Engine.frameBuffer;
+    ushort c;
+    int r, g, b;
+
+    for (int y = 0; y < SCREEN_YSIZE; y++) {
+        for (int x = 0; x < SCREEN_XSIZE ; x++) {
+	    c = *(p++);
+	    
+	    _putpixel16(Engine.frameBufferCvt, x, y, makecol16(getb16(c),getg16(c),getr16(c)));
+        }
+    }
+    
+    stretch_blit(Engine.frameBufferCvt, Engine.screenBuffer, 0, 0, Engine.frameBufferCvt->w, Engine.frameBufferCvt->h,
+        0, 0, Engine.screenBuffer->w, Engine.screenBuffer->h);
+
+    blit(Engine.screenBuffer, screen, 0, 0, 0, 0, Engine.screenBuffer->w, Engine.screenBuffer->h);
+    
+    //memcpy(Engine.frameBufferCvt->line[0], Engine.frameBuffer,
+    //	SCREEN_YSIZE * SCREEN_XSIZE * 2);
+    
+  //  blit(Engine.frameBufferCvt, screen, 0, 0, 0, 0, Engine.frameBufferCvt->w, Engine.frameBufferCvt->h);
+#endif
 }
 void ReleaseRenderDevice()
 {
@@ -322,6 +376,13 @@ void ReleaseRenderDevice()
 
 #if RETRO_USING_SDL1
     SDL_FreeSurface(Engine.screenBuffer);
+#endif
+    
+#if RETRO_USING_ALLEGRO
+    destroy_bitmap(Engine.frameBufferCvt);
+    Engine.frameBufferCvt = NULL;
+    destroy_bitmap(Engine.screenBuffer);
+    Engine.screenBuffer = NULL;
 #endif
 }
 
