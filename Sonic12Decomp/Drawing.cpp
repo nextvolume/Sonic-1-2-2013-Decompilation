@@ -17,6 +17,8 @@ int InitRenderDevice()
 {
     char gameTitle[0x40];
 
+    printLog("Initializing render device...");	
+	
     sprintf(gameTitle, "%s%s", Engine.gameWindowText, Engine.usingDataFile ? "" : " (Using Data Folder)");
 
     Engine.frameBuffer   = new ushort[SCREEN_XSIZE * SCREEN_YSIZE];
@@ -144,18 +146,15 @@ int InitRenderDevice()
     install_keyboard();
     install_mouse();
     
-    set_gfx_mode(GFX_AUTODETECT_FULLSCREEN,
+    set_color_depth(16);
+    set_gfx_mode(Engine.startFullScreen ? GFX_AUTODETECT_FULLSCREEN : GFX_AUTODETECT_WINDOWED,
         SCREEN_XSIZE * Engine.windowScale, SCREEN_YSIZE * Engine.windowScale,
 	0, 0);
-    set_color_depth(16);
     
     Engine.isFullScreen = Engine.startFullScreen;
     
-    Engine.frameBufferCvt =
-        create_bitmap(SCREEN_XSIZE, SCREEN_YSIZE);
-    
     Engine.screenBuffer =
-	create_bitmap(SCREEN_W, SCREEN_H);
+	create_bitmap(SCREEN_XSIZE, SCREEN_YSIZE);
 
     if (!Engine.screenBuffer) {
         printLog("ERROR: failed to create screen buffer!");
@@ -164,7 +163,7 @@ int InitRenderDevice()
     
     set_window_title(gameTitle);
     
-    Engine.useHQModes = false; // disabled
+    Engine.useHQModes = true; // disabled
     Engine.borderless = false; // disabled
 #endif
 
@@ -339,27 +338,9 @@ void RenderRenderDevice()
 #endif
 
 #if RETRO_USING_ALLEGRO4
-    ushort *p = Engine.frameBuffer;
-    ushort c;
-    int r, g, b;
+    memcpy(Engine.screenBuffer->line[0], Engine.frameBuffer, SCREEN_XSIZE * SCREEN_YSIZE * 2);
 
-    for (int y = 0; y < SCREEN_YSIZE; y++) {
-        for (int x = 0; x < SCREEN_XSIZE ; x++) {
-	    c = *(p++);
-	    
-	    _putpixel16(Engine.frameBufferCvt, x, y, makecol16(getb16(c),getg16(c),getr16(c)));
-        }
-    }
-    
-    stretch_blit(Engine.frameBufferCvt, Engine.screenBuffer, 0, 0, Engine.frameBufferCvt->w, Engine.frameBufferCvt->h,
-        0, 0, Engine.screenBuffer->w, Engine.screenBuffer->h);
-
-    blit(Engine.screenBuffer, screen, 0, 0, 0, 0, Engine.screenBuffer->w, Engine.screenBuffer->h);
-    
-    //memcpy(Engine.frameBufferCvt->line[0], Engine.frameBuffer,
-    //	SCREEN_YSIZE * SCREEN_XSIZE * 2);
-    
-  //  blit(Engine.frameBufferCvt, screen, 0, 0, 0, 0, Engine.frameBufferCvt->w, Engine.frameBufferCvt->h);
+    stretch_blit(Engine.screenBuffer, screen, 0, 0, Engine.screenBuffer->w, Engine.screenBuffer->h, 0, 0, SCREEN_W, SCREEN_H);
 #endif
 }
 void ReleaseRenderDevice()
@@ -408,7 +389,7 @@ void GenerateBlendLookupTable(void)
 }
 
 void ClearScreen(byte index)
-{
+{	
     ushort colour       = activePalette[index];
     ushort *framebuffer = Engine.frameBuffer;
     int cnt             = SCREEN_XSIZE * SCREEN_YSIZE;

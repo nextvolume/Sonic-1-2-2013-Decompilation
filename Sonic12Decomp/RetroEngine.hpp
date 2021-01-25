@@ -193,9 +193,7 @@ enum RetroGameType {
 #endif
 
 #if RETRO_USING_ALLEGRO4
-   extern "C" {
 #include <allegro.h>
- }
 #endif
 
 extern bool usingCWD;
@@ -226,10 +224,6 @@ extern bool engineDebugMode;
 // Native Entities
 #include "PauseMenu.hpp"
 #include "RetroGameLoop.hpp"
-
-Uint32 Retro_GetTicks(void);
-void Retro_Delay(Uint32 ms);
-void Retro_InitTicks(void);
 
 class RetroEngine
 {
@@ -277,6 +271,7 @@ public:
 
     void Init();
     void Run();
+    void ResetFrameCounter();
 
     bool LoadGameConfig(const char *Filepath);
 
@@ -346,7 +341,6 @@ public:
 #endif
 
 #if RETRO_USING_ALLEGRO4
-    BITMAP *frameBufferCvt = NULL;
     BITMAP *screenBuffer = NULL;
 #endif
 };

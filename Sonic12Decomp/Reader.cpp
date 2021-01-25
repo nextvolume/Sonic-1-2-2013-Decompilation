@@ -22,6 +22,12 @@ byte encryptionStringB[0x10];
 
 FileIO *cFileHandle = nullptr;
 
+int fRead(void *ptr, int size, int nmemb, FileIO *stream) {
+	int r = fReadFunc(ptr,size,nmemb,stream);
+	Engine.ResetFrameCounter();
+	return r;
+}
+
 bool CheckRSDKFile(const char *filePath)
 {
     FileInfo info;

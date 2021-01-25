@@ -38,8 +38,10 @@ struct TrackInfo {
 };
 
 struct MusicPlaybackInfo {
+#if !RETRO_DISABLE_OGGVORBIS	
     OggVorbis_File vorbisFile;
     int vorbBitstream;
+#endif
 #if RETRO_USING_SDL1
     SDL_AudioSpec spec;
 #endif

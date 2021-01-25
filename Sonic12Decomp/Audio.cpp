@@ -37,6 +37,9 @@ int trackBuffer = -1;
 
 int InitAudioPlayback()
 {
+#if !RETRO_DISABLE_AUDIO	
+    printLog("Initializing audio playback...");	
+	
     StopAllSfx(); //"init"
 #if RETRO_USING_SDL1 || RETRO_USING_SDL2
     SDL_AudioSpec want;
@@ -139,8 +142,9 @@ int InitAudioPlayback()
     }
 
     for (int i = 0; i < CHANNEL_COUNT; ++i) sfxChannels[i].sfxID = -1;
-
+#endif
     return true;
+
 }
 
 
@@ -196,6 +200,7 @@ int closeVorbis_Sfx(void *ptr) { return CloseFile2((FileInfo *)ptr); }
 
 void ProcessMusicStream(Sint32 *stream, size_t bytes_wanted)
 {
+#if !RETRO_DISABLE_AUDIO	
     if (!musInfo.loaded)
         return;
     switch (musicStatus) {
@@ -301,15 +306,17 @@ void ProcessMusicStream(Sint32 *stream, size_t bytes_wanted)
             // dont play
             break;
     }
+#endif
 }
 
 void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
 {
     (void)userdata; // Unused
-
+#if !RETRO_DISABLE_AUDIO
     if (!audioEnabled)
         return;
 
+#if RETRO_USING_SDL2 || RETRO_USING_SDL1
     if (musicStatus == MUSIC_LOADING) {
         if (trackBuffer < 0 || trackBuffer >= TRACK_COUNT) {
             StopMusic();
@@ -457,6 +464,8 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
 
         samples_remaining -= samples_to_do;
     }
+#endif
+#endif
 }
 
 #if RETRO_USING_SDL1 || RETRO_USING_SDL2
@@ -504,6 +513,7 @@ void ProcessAudioMixing(Sint32 *dst, const Sint16 *src, int len, int volume, sby
 
 void SetMusicTrack(const char *filePath, byte trackID, bool loop, uint loopPoint)
 {
+#if !RETRO_DISABLE_AUDIO
     LOCK_AUDIO_DEVICE()
     TrackInfo *track = &musicTracks[trackID];
     StrCopy(track->fileName, "Data/Music/");
@@ -511,10 +521,12 @@ void SetMusicTrack(const char *filePath, byte trackID, bool loop, uint loopPoint
     track->trackLoop = loop;
     track->loopPoint = loopPoint;
     UNLOCK_AUDIO_DEVICE()
+#endif
 }
 
 void SwapMusicTrack(const char *filePath, byte trackID, uint loopPoint, uint ratio)
 {
+#if !RETRO_DISABLE_AUDIO
     if (StrLength(filePath) <= 0) {
         StopMusic();
     }
@@ -529,10 +541,12 @@ void SwapMusicTrack(const char *filePath, byte trackID, uint loopPoint, uint rat
         UNLOCK_AUDIO_DEVICE()
         PlayMusic(trackID, 1);
     }
+#endif
 }
 
 bool PlayMusic(int track, int musStartPos)
 {
+#if !RETRO_DISABLE_AUDIO
     if (!audioEnabled)
         return false;
 
@@ -546,11 +560,13 @@ bool PlayMusic(int track, int musStartPos)
     trackBuffer = track;
     musicStatus = MUSIC_LOADING;
     UNLOCK_AUDIO_DEVICE()
+#endif
     return true;
 }
 
 void SetSfxName(const char *sfxName, int sfxID)
 {
+#if !RETRO_DISABLE_AUDIO	
     int sfxNameID   = 0;
     int soundNameID = 0;
     while (sfxName[sfxNameID]) {
@@ -560,10 +576,12 @@ void SetSfxName(const char *sfxName, int sfxID)
     }
     sfxNames[sfxID][soundNameID] = 0;
     printLog("Set SFX (%d) name to: %s", sfxID, sfxName);
+#endif
 }
 
 void LoadSfx(char *filePath, byte sfxID)
 {
+#if !RETRO_DISABLE_AUDIO	
     if (!audioEnabled)
         return;
 
@@ -722,9 +740,11 @@ void LoadSfx(char *filePath, byte sfxID)
         }
     }
 #endif
+#endif
 }
 void PlaySfx(int sfx, bool loop)
 {
+#if !RETRO_DISABLE_AUDIO	
     LOCK_AUDIO_DEVICE()
     int sfxChannelID = -1;
     for (int c = 0; c < CHANNEL_COUNT; ++c) {
@@ -741,9 +761,11 @@ void PlaySfx(int sfx, bool loop)
     sfxInfo->loopSFX      = loop;
     sfxInfo->pan          = 0;
     UNLOCK_AUDIO_DEVICE()
+#endif
 }
 void SetSfxAttributes(int sfx, int loopCount, sbyte pan)
 {
+#if !RETRO_DISABLE_AUDIO	
     LOCK_AUDIO_DEVICE()
     int sfxChannel = -1;
     for (int i = 0; i < CHANNEL_COUNT; ++i) {
@@ -763,4 +785,5 @@ void SetSfxAttributes(int sfx, int loopCount, sbyte pan)
     sfxInfo->pan         = pan;
     sfxInfo->sfxID       = sfx;
     UNLOCK_AUDIO_DEVICE()
+#endif
 }

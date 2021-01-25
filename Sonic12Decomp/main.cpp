@@ -6,8 +6,6 @@ int main(int argc, char *argv[])
         if (StrComp(argv[i], "UsingCWD"))
             usingCWD = true;
     }
-    
-    Retro_InitTicks();
 
     Engine.Init();
 #if RETRO_USING_SDL2

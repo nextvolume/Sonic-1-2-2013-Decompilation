@@ -5,55 +5,6 @@ bool engineDebugMode = false;
 
 RetroEngine Engine = RetroEngine();
 
-#if RETRO_USING_SDL1 || RETRO_USING_SDL2
-
-Uint32 Retro_GetTicks(void)
-{
-    return SDL_GetTicks();
-}
-
-void Retro_Delay(Uint32 ms)
-{
-    SDL_Delay(ms);
-}
-
-void Retro_InitTicks(void)
-{
-
-}
-
-#else
-
-#include <sys/time.h>
-#include <unistd.h>
-
-struct timeval initTv;
-struct timeval curTv;
-
-Uint32 Retro_GetTicks(void)
-{	
-    gettimeofday(&curTv, NULL);
-	
-    return ((curTv.tv_sec - initTv.tv_sec) * 1000) +
-		((curTv.tv_usec - initTv.tv_usec) / 1000);
-	
-	//1 001000 = 1001
-	
-	
-}
-
-void Retro_Delay(Uint32 ms)
-{
-    //usleep(ms);
-}
-
-void Retro_InitTicks(void)
-{
-    gettimeofday(&initTv, NULL);
-}
-
-#endif
-
 inline int getLowerRate(int intendRate, int targetRate)
 {
     int result   = 0;
@@ -291,6 +242,28 @@ bool processEvents()
         }
     }
 #endif
+
+#if RETRO_USING_ALLEGRO4
+       static int wasEsc = 0;
+       static int wasBackspace = 0;
+
+	if (key[KEY_ESC] && Engine.devMenu && !wasEsc) {
+		Engine.gameMode = ENGINE_INITDEVMENU;
+		wasEsc = 1;
+	}
+
+	if (key[KEY_BACKSPACE] && Engine.devMenu && !wasBackspace) {
+		Engine.gameSpeed = (Engine.gameSpeed != 1) ? 1 : Engine.fastForwardSpeed;
+		wasBackspace = 1;
+	}
+	
+	if (key[KEY_F4])
+		return false;
+	
+	wasBackspace = key[KEY_BACKSPACE];
+	wasEsc = key[KEY_ESC];
+#endif
+
     return true;
 }
 
@@ -496,6 +469,13 @@ void display_frame_handler(void)
 END_OF_FUNCTION(display_frame_handler)
 #endif
 
+void RetroEngine::ResetFrameCounter()
+{
+#ifdef RETRO_USING_ALLEGRO4
+	display_frame = 0;
+#endif
+}
+
 void RetroEngine::Run()
 {
 #if RETRO_USING_SDL1 || RETRO_USING_SDL2	
@@ -526,8 +506,6 @@ void RetroEngine::Run()
 #endif
 
 #if RETRO_USING_ALLEGRO4
-   // printf("OK!\n");
-
     LOCK_VARIABLE(display_frame);
     LOCK_FUNCTION(display_frame_handler);
     install_int_ex(display_frame_handler, BPS_TO_TIMER(refreshRate));
@@ -547,14 +525,12 @@ void RetroEngine::Run()
     inputDevice[INPUT_START].keyMappings = KEY_ENTER;
     inputDevice[INPUT_SELECT].keyMappings = KEY_SPACE;
 
-	printf("gameSpeed = %d\n", gameSpeed);
-
-
     while (running) {
-	if (display_frame) {
+	if (display_frame) {	
+	    running = processEvents();
 	    RenderRenderDevice();
 
-	    while(display_frame > 0) {
+	   while(display_frame > 0) {
 	
 	    for (int s = 0; s < gameSpeed; ++s) {
 	        ProcessInput();
@@ -567,6 +543,8 @@ void RetroEngine::Run()
 		
             display_frame--;
             } 
+	    
+	    display_frame = 0;
         }
     }
 #endif

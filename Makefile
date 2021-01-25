@@ -24,14 +24,15 @@ SOURCES = Sonic12Decomp/Animation.cpp     \
 
 ifneq ($(USE_ALLEGRO4),)
 	ifneq ($(DOS),)
-		CXXFLAGS_ALL = -DBASE_PATH='"$(BASE_PATH)"' -DRETRO_USING_ALLEGRO4 $(CXXFLAGS)
+		CXXFLAGS_ALL = -DBASE_PATH='"$(BASE_PATH)"' -DRETRO_DISABLE_AUDIO -DRETRO_DISABLE_OGGVORBIS  \
+		-DRETRO_USING_ALLEGRO4 $(CXXFLAGS)
 		LDFLAGS_ALL = $(LDFLAGS)
-		LIBS_ALL = -lalleg  -lvorbisfile -lvorbisenc -lvorbis -logg $(LIBS)
+		LIBS_ALL = -lalleg $(LIBS)
 	else
-		CXXFLAGS_ALL = $(shell pkg-config --cflags vorbisfile vorbis) $(shell allegro-config --cppflags) \
-		-DBASE_PATH='"$(BASE_PATH)"' -DRETRO_USING_ALLEGRO4 $(CXXFLAGS)
+		CXXFLAGS_ALL = $(shell allegro-config --cppflags) -DRETRO_DISABLE_AUDIO \
+		-DBASE_PATH='"$(BASE_PATH)"' -DRETRO_DISABLE_OGGVORBIS -DRETRO_USING_ALLEGRO4 $(CXXFLAGS)
 		LDFLAGS_ALL = $(LDFLAGS)
-		LIBS_ALL = $(shell pkg-config --libs vorbisfile vorbis) $(shell allegro-config --libs) $(LIBS)	
+		LIBS_ALL = $(shell allegro-config --libs) $(LIBS)	
 	endif
 else
 	CXXFLAGS_ALL = $(shell pkg-config --cflags --static sdl2 vorbisfile vorbis) \
