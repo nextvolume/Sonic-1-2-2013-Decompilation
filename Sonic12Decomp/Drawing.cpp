@@ -21,9 +21,11 @@ int InitRenderDevice()
 	
     sprintf(gameTitle, "%s%s", Engine.gameWindowText, Engine.usingDataFile ? "" : " (Using Data Folder)");
 
+#if !RETRO_USING_ALLEGRO4	
     Engine.frameBuffer   = new ushort[SCREEN_XSIZE * SCREEN_YSIZE];
-    Engine.frameBuffer2x = new ushort[(SCREEN_XSIZE * 2) * (SCREEN_YSIZE * 2)];
     memset(Engine.frameBuffer, 0, (SCREEN_XSIZE * SCREEN_YSIZE) * sizeof(ushort));
+#endif
+    Engine.frameBuffer2x = new ushort[(SCREEN_XSIZE * 2) * (SCREEN_YSIZE * 2)];
     memset(Engine.frameBuffer2x, 0, (SCREEN_XSIZE * 2) * (SCREEN_YSIZE * 2) * sizeof(ushort));
 
 #if RETRO_USING_SDL2
@@ -160,6 +162,8 @@ int InitRenderDevice()
         printLog("ERROR: failed to create screen buffer!");
         return 0;
     }
+	
+    Engine.frameBuffer =  (ushort*)Engine.screenBuffer->dat;
     
     set_window_title(gameTitle);
     
@@ -338,15 +342,16 @@ void RenderRenderDevice()
 #endif
 
 #if RETRO_USING_ALLEGRO4
-    memcpy(Engine.screenBuffer->line[0], Engine.frameBuffer, SCREEN_XSIZE * SCREEN_YSIZE * 2);
-
-    stretch_blit(Engine.screenBuffer, screen, 0, 0, Engine.screenBuffer->w, Engine.screenBuffer->h, 0, 0, SCREEN_W, SCREEN_H);
+   stretch_blit(Engine.screenBuffer, screen, 0, 0, Engine.screenBuffer->w, Engine.screenBuffer->h, 0, 0, SCREEN_W, SCREEN_H);
 #endif
 }
 void ReleaseRenderDevice()
 {
+#if !RETRO_USING_ALLEGRO4	
     if (Engine.frameBuffer)
         delete[] Engine.frameBuffer;
+#endif
+
 #if RETRO_USING_SDL2
     SDL_DestroyTexture(Engine.screenBuffer);
     Engine.screenBuffer = NULL;
@@ -359,11 +364,8 @@ void ReleaseRenderDevice()
     SDL_FreeSurface(Engine.screenBuffer);
 #endif
     
-#if RETRO_USING_ALLEGRO
-    destroy_bitmap(Engine.frameBufferCvt);
-    Engine.frameBufferCvt = NULL;
+#if RETRO_USING_ALLEGRO4
     destroy_bitmap(Engine.screenBuffer);
-    Engine.screenBuffer = NULL;
 #endif
 }
 

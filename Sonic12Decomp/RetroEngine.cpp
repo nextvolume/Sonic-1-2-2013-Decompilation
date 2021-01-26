@@ -465,6 +465,7 @@ volatile int display_frame=0;
 void display_frame_handler(void) 
 {
     display_frame++;
+    display_frame&=3;
 }
 END_OF_FUNCTION(display_frame_handler)
 #endif
