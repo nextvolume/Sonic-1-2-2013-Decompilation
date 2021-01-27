@@ -197,6 +197,10 @@ enum RetroGameType {
 #include <allegro.h>
 #endif
 
+#if RETRO_DOS
+extern int useVGAMode;
+#endif
+
 extern bool usingCWD;
 extern bool engineDebugMode;
 

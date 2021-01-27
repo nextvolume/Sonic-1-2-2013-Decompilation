@@ -40,7 +40,9 @@ static Sint16 *WavDataToBuffer(void *data, int num_frames, int num_channels,
 
 int InitAudioPlayback()
 {
-#if !RETRO_DISABLE_AUDIO	
+#if !RETRO_DISABLE_AUDIO
+    if (!audioEnabled) return true;
+	
     printLog("Initializing audio playback...");	
 	
     StopAllSfx(); //"init"

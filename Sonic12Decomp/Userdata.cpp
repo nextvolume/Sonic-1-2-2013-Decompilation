@@ -57,7 +57,12 @@ void InitUserdata()
         ini.SetInteger("Window", "WindowScale", Engine.windowScale = 2);
         ini.SetInteger("Window", "ScreenWidth", SCREEN_XSIZE = DEFAULT_SCREEN_XSIZE);
         ini.SetInteger("Window", "RefreshRate", Engine.refreshRate = 60);
+	
+#if RETRO_DOS
+	ini.SetInteger("Window", "UseVGAMode", useVGAMode=0);
+#endif
 
+        ini.SetBool("Audio", "Enabled", (audioEnabled = true));
         ini.SetFloat("Audio", "BGMVolume", bgmVolume / (float)MAX_VOLUME);
         ini.SetFloat("Audio", "SFXVolume", sfxVolume / (float)MAX_VOLUME);
 
@@ -171,8 +176,15 @@ void InitUserdata()
             SCREEN_XSIZE = DEFAULT_SCREEN_XSIZE;
         if (!ini.GetInteger("Window", "RefreshRate", &Engine.refreshRate))
             Engine.refreshRate = 60;
+	
+#ifdef RETRO_DOS
+        if (!ini.GetInteger("Window", "UseVGAMode", &useVGAMode))
+	    useVGAMode = 0;
+#endif
 
         float bv = 0, sv = 0;
+	if (!ini.GetBool("Audio", "Enabled", &audioEnabled))
+            audioEnabled = true;
         if (!ini.GetFloat("Audio", "BGMVolume", &bv))
             bv = 1.0f;
         if (!ini.GetFloat("Audio", "SFXVolume", &sv))
@@ -399,9 +411,15 @@ void writeSettings()
     ini.SetInteger("Window", "ScreenWidth", SCREEN_XSIZE);
     ini.SetComment("Window", "RRComment", "Determines the target FPS");
     ini.SetInteger("Window", "RefreshRate", Engine.refreshRate);
+#if RETRO_DOS
+    ini.SetComment("Window", "VGAComment", "Force VGA video mode (0=don't, 1=320x200[13h],2=320x240[X]),3=360x240[X], 4=376x282[X],5=400x300[X])");
+    
+    ini.SetInteger("Window", "UseVGAMode", useVGAMode);
+#endif
 
     ini.SetFloat("Audio", "BGMVolume", bgmVolume / (float)MAX_VOLUME);
     ini.SetFloat("Audio", "SFXVolume", sfxVolume / (float)MAX_VOLUME);
+    ini.SetBool("Audio", "Enabled", audioEnabled);
 
 #if RETRO_USING_SDL2
     ini.SetComment("Keyboard 1", "IK1Comment", "Keyboard Mappings for P1 (Based on: https://wiki.libsdl.org/SDL_Scancode)");

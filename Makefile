@@ -25,7 +25,7 @@ SOURCES = Sonic12Decomp/Animation.cpp     \
 ifneq ($(USE_ALLEGRO4),)
 	ifneq ($(DOS),)
 		CXXFLAGS_ALL = -DBASE_PATH='"$(BASE_PATH)"'  \
-		-DRETRO_USING_ALLEGRO4 $(CXXFLAGS)
+		-DRETRO_USING_ALLEGRO4 -DRETRO_DOS $(CXXFLAGS)
 		LDFLAGS_ALL = $(LDFLAGS)
 		LIBS_ALL = -lvorbisfile  -lvorbis -logg -lalleg $(LIBS)
 	else
