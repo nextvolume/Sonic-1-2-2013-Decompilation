@@ -689,7 +689,7 @@ static Sint16* WavDataToBuffer(void* data, int num_frames, int num_channels,
     int outSz = num_frames * 2 * 2;
     Sint16* src = (Sint16*)data;
     unsigned char* src8 = (unsigned char*)data;
-    Sint16* out = new Sint16[outSz / 2];
+    Sint16* out = new Sint16[outSz / num_channels];
 
     if (num_channels == 2 && bit_depth == 16) {
         memcpy(out, src, outSz);
@@ -777,21 +777,21 @@ void LoadSfx(char *filePath, byte sfxID)
             }
 #else
 // platform-independent WAV loading code, quite dumb
-        int data_size = sfx[40] | (sfx[41] << 8) | (sfx[42] << 16) | (sfx[43] << 24);
-        int sample_rate = sfx[24] | (sfx[25] << 8) | (sfx[26] << 16) | (sfx[27] << 24);
-        int bit_depth = sfx[34] | (sfx[35] << 8);
-        int num_channels = sfx[22] | (sfx[23] << 8);
-        int num_frames = (data_size / num_channels) / (bit_depth / 8);
+            int data_size = sfx[40] | (sfx[41] << 8) | (sfx[42] << 16) | (sfx[43] << 24);
+            int sample_rate = sfx[24] | (sfx[25] << 8) | (sfx[26] << 16) | (sfx[27] << 24);
+	    int bit_depth = sfx[34] | (sfx[35] << 8);
+            int num_channels = sfx[22] | (sfx[23] << 8);
+            int num_frames = (data_size / num_channels) / (bit_depth / 8);
 
-        LOCK_AUDIO_DEVICE()
-        StrCopy(sfxList[sfxID].name, filePath);
-        sfxList[sfxID].buffer = WavDataToBuffer(&sfx[44], num_frames, num_channels,
-            bit_depth);
-        sfxList[sfxID].length = num_frames * 2;
-        sfxList[sfxID].loaded = true;
-        UNLOCK_AUDIO_DEVICE()
+            LOCK_AUDIO_DEVICE()
+            StrCopy(sfxList[sfxID].name, filePath);
+            sfxList[sfxID].buffer = WavDataToBuffer(&sfx[44], num_frames, num_channels,
+                bit_depth);
+            sfxList[sfxID].length = num_frames * 2;
+            sfxList[sfxID].loaded = true;
+            UNLOCK_AUDIO_DEVICE()
 
-        delete[] sfx;
+            delete[] sfx;
 #endif
         }
 #if !RETRO_DISABLE_OGGVORBIS	
