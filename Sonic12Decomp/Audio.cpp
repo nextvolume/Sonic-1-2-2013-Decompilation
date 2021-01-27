@@ -623,7 +623,6 @@ void SetMusicTrack(const char *filePath, byte trackID, bool loop, uint loopPoint
     StrAdd(track->fileName, filePath);
     track->trackLoop = loop;
     track->loopPoint = loopPoint;
-    printLog("SetMusicTrack = %s", filePath);
     UNLOCK_AUDIO_DEVICE()
 #endif
 }
