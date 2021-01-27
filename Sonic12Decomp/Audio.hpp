@@ -7,6 +7,8 @@
 
 #define MAX_VOLUME (100)
 
+#define ADJUST_VOLUME(s, v) (s = (s * v) / MAX_VOLUME)
+
 #if RETRO_USING_SDL1 || RETRO_USING_SDL2
 
 #if RETRO_USING_SDL2
@@ -22,11 +24,20 @@ extern SDL_AudioSpec audioDeviceFormat;
 #define AUDIO_SAMPLES   (0x800)
 #define AUDIO_CHANNELS  (2)
 
-#define ADJUST_VOLUME(s, v) (s = (s * v) / MAX_VOLUME)
+#elif RETRO_USING_ALLEGRO4
+#define LOCK_AUDIO_DEVICE() ;
+#define UNLOCK_AUDIO_DEVICE() ;
+
+#define AUDIO_FREQUENCY (44100)
+#define AUDIO_SAMPLES   (0x800)
 
 #else
 #define LOCK_AUDIO_DEVICE() ;
 #define UNLOCK_AUDIO_DEVICE() ;
+
+#define AUDIO_FREQUENCY (44100)
+#define AUDIO_SAMPLES   (0x800)
+
 #endif
 
 #define MIX_BUFFER_SAMPLES (256)
@@ -48,6 +59,9 @@ struct MusicPlaybackInfo {
 #if RETRO_USING_SDL2
     SDL_AudioStream *stream;
 #endif
+#if RETRO_USING_ALLEGRO4
+    AUDIOSTREAM *stream;
+#endif	
     Sint16 *buffer;
     FileInfo fileInfo;
     bool trackLoop;
@@ -107,11 +121,12 @@ extern MusicPlaybackInfo musInfo;
 
 int InitAudioPlayback();
 
-#if RETRO_USING_SDL1 || RETRO_USING_SDL2
-void ProcessMusicStream(Sint32 *stream, size_t bytes_wanted);
 void ProcessAudioPlayback(void *data, Uint8 *stream, int len);
-void ProcessAudioMixing(Sint32 *dst, const Sint16 *src, int len, int volume, sbyte pan);
 
+#if RETRO_USING_SDL1 || RETRO_USING_SDL2
+
+void ProcessMusicStream(Sint32 *stream, size_t bytes_wanted);
+void ProcessAudioMixing(Sint32 *dst, const Sint16 *src, int len, int volume, sbyte pan);
 
 inline void freeMusInfo()
 {
@@ -137,10 +152,6 @@ inline void freeMusInfo()
     }
 }
 #else
-void ProcessMusicStream();
-void ProcessAudioPlayback();
-void ProcessAudioMixing();
-
 inline void freeMusInfo()
 {
     if (musInfo.loaded) {

@@ -526,7 +526,14 @@ void RetroEngine::Run()
     inputDevice[INPUT_START].keyMappings = KEY_ENTER;
     inputDevice[INPUT_SELECT].keyMappings = KEY_SPACE;
 
+    unsigned char *str;
+
     while (running) {
+	if ( audioEnabled && ( str = (unsigned char*)get_audio_stream_buffer(musInfo.stream) )) {
+		ProcessAudioPlayback(NULL, str, AUDIO_SAMPLES);
+		free_audio_stream_buffer(musInfo.stream);
+	}
+    
 	if (display_frame) {	
 	    running = processEvents();
 	    RenderRenderDevice();

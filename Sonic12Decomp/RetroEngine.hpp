@@ -29,6 +29,7 @@ typedef signed int Sint32;
 typedef unsigned char Uint8;
 typedef unsigned short Uint16;
 typedef unsigned int Uint32;
+
 #endif
 
 #define RETRO_USE_NETWORKING (0)
