@@ -14,7 +14,7 @@ GFXSurface gfxSurface[SURFACE_MAX];
 byte graphicData[GFXDATA_MAX];
 
 #ifdef RETRO_DOS
-BITMAP *screen8Buffer;
+BITMAP *screen8Buffer = NULL;
 
 #define NUM_OF_VGA_MODES 6
 
@@ -451,7 +451,8 @@ void ReleaseRenderDevice()
     destroy_bitmap(Engine.screenBuffer);
 
 #if RETRO_DOS
-    destroy_bitmap(screen8Buffer);
+    if (screen8Buffer)
+        destroy_bitmap(screen8Buffer);
 #endif    
     
 #endif
