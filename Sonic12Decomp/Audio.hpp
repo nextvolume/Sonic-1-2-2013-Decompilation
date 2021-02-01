@@ -128,45 +128,34 @@ void ProcessAudioPlayback(void *data, Uint8 *stream, int len);
 void ProcessMusicStream(Sint32 *stream, size_t bytes_wanted);
 void ProcessAudioMixing(Sint32 *dst, const Sint16 *src, int len, int volume, sbyte pan);
 
+#endif
+
 inline void freeMusInfo()
 {
     if (musInfo.loaded) {
-        SDL_LockAudio();
+        LOCK_AUDIO_DEVICE()
 
-        if (musInfo.buffer)
-            delete[] musInfo.buffer;
-#if RETRO_USING_SDL2
+#if RETRO_USING_SDL2 || RETRO_USING_SDL1
         if (musInfo.stream)
             SDL_FreeAudioStream(musInfo.stream);
 #endif
+#if !RETRO_DISABLE_OGGVORBIS
         ov_clear(&musInfo.vorbisFile);
-        musInfo.buffer    = nullptr;
-#if RETRO_USING_SDL2
+#endif	
+#if RETRO_USING_SDL2 || RETRO_USING_SDL1
+        if (musInfo.buffer)
+            delete[] musInfo.buffer;
+	    
+	musInfo.buffer    = nullptr;
         musInfo.stream = nullptr;
 #endif
         musInfo.trackLoop = false;
         musInfo.loopPoint = 0;
         musInfo.loaded    = false;
 
-        SDL_UnlockAudio();
+        UNLOCK_AUDIO_DEVICE()
     }
 }
-#else
-inline void freeMusInfo()
-{
-    if (musInfo.loaded) {
-  //      if (musInfo.musicFile)
-  //          delete[] musInfo.musicFile;
-    //    musInfo.musicFile    = nullptr;
-        musInfo.buffer       = nullptr;
-     //   musInfo.stream       = nullptr;
-     //   musInfo.pos          = 0;
-     //   musInfo.len          = 0;
-     //   musInfo.currentTrack = nullptr;
-        musInfo.loaded       = false;
-    }
-}
-#endif
 
 void SetMusicTrack(const char *filePath, byte trackID, bool loop, uint loopPoint);
 void SwapMusicTrack(const char *filePath, byte trackID, uint loopPoint, uint ratio);

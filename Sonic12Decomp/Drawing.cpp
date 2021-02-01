@@ -209,6 +209,7 @@ int InitRenderDevice()
 	    SetScreenSize(SCREEN_W, SCREEN_YSIZE);
 
 	    screen8Buffer = create_bitmap(SCREEN_XSIZE, SCREEN_YSIZE);
+	    Engine.windowScale = 1;
 	}
 	else
 #endif
@@ -232,7 +233,7 @@ int InitRenderDevice()
     
     set_window_title(gameTitle);
     
-    Engine.useHQModes = true; // disabled
+    Engine.useHQModes = false; // disabled
     Engine.borderless = false; // disabled
 #endif
 
@@ -448,6 +449,11 @@ void ReleaseRenderDevice()
     
 #if RETRO_USING_ALLEGRO4
     destroy_bitmap(Engine.screenBuffer);
+
+#if RETRO_DOS
+    destroy_bitmap(Engine.screen8Buffer);
+#endif    
+    
 #endif
 }
 

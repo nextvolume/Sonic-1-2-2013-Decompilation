@@ -382,6 +382,8 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
 
             samples = (unsigned long long)ov_pcm_total(&musInfo.vorbisFile, -1);
 
+#if RETRO_USING_SDL2 || RETRO_USING_SDL1
+	    
 #if RETRO_USING_SDL2
             musInfo.stream = SDL_NewAudioStream(AUDIO_S16, musInfo.vorbisFile.vi->channels, musInfo.vorbisFile.vi->rate, audioDeviceFormat.format,
                                                 audioDeviceFormat.channels, audioDeviceFormat.freq);
@@ -397,6 +399,7 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
 #endif
 
             musInfo.buffer = new Sint16[MIX_BUFFER_SAMPLES];
+#endif
 
             if (musicStartPos) {
                 float newPos  = oldPos * ((float)musicRatio * 0.0001); // 8000 == 0.8 (ratio / 10,000)
@@ -555,7 +558,7 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
 
             for (int x = 0; x < samples_done; x++) {
                 Sint32 c = buffer[x] / 2 + streamS[x];
-                c = ADJUST_VOLUME(c, (sfxVolume * masterVolume) / MAX_VOLUME);
+                c = ADJUST_VOLUME(c, (sfxVolume * 100) / MAX_VOLUME);
 
                 streamS[x] = (c > 0x7FFF) ? 0x7FFF : c;
             }
@@ -702,11 +705,11 @@ static Sint16* WavDataToBuffer(void* data, int num_frames, int num_channels,
         }
     } else if (num_channels == 2 && bit_depth == 8) {
         for (int x = 0; x < num_frames; x++)
-            out[x] = src8[x];
+            out[x] = (src8[x] << 8) ^ 0x8000;
     } else if (num_channels == 1 && bit_depth == 8) {
         for (int x = 0; x < num_frames; x++) {
-            out[x * 2] = src8[x];
-            out[(x * 2) + 1] = src8[x];
+            out[x * 2] = (src8[x] << 8) ^ 0x8000;
+            out[(x * 2) + 1] = (src8[x] << 8) ^ 0x8000;
         }
     }
 
@@ -779,20 +782,40 @@ void LoadSfx(char *filePath, byte sfxID)
             }
 #else
 // platform-independent WAV loading code, quite dumb
-            int data_size = sfx[40] | (sfx[41] << 8) | (sfx[42] << 16) | (sfx[43] << 24);
-            int sample_rate = sfx[24] | (sfx[25] << 8) | (sfx[26] << 16) | (sfx[27] << 24);
-	    int bit_depth = sfx[34] | (sfx[35] << 8);
-            int num_channels = sfx[22] | (sfx[23] << 8);
-            int num_frames = (data_size / num_channels) / (bit_depth / 8);
+	    int z =	12;
+	    int zid, zs=-8;
+	    
+	    do {
+	        z+=zs+8;    
+	        zid = sfx[z] | (sfx[z+1] << 8) | (sfx[z+2] << 16) | (sfx[z+3]<<24);		    
+	        zs = sfx[z+4] | (sfx[z+5] << 8) | (sfx[z+6] << 16) | (sfx[z+7]<<24);
+	    } while(zid != 0x20746d66); // fmt
+	    
+            int sample_rate = sfx[z+12] | (sfx[z+13] << 8) | (sfx[z+14] << 16) | (sfx[z+15] << 24);
+	    int bit_depth = sfx[z+22] | (sfx[z+23] << 8);
+            int num_channels = sfx[z+10] | (sfx[z+11] << 8);
 
+	    z += zs + 8;
+	    
+	    zs = -8;
+	    
+	    do {
+	        z+=zs+8;    
+	        zid = sfx[z] | (sfx[z+1] << 8) | (sfx[z+2] << 16) | (sfx[z+3]<<24);		    
+	        zs = sfx[z+4] | (sfx[z+5] << 8) | (sfx[z+6] << 16) | (sfx[z+7]<<24);
+	    } while(zid != 0x61746164); // data
+	    
+	    int data_size = sfx[z+4] | (sfx[z+5] << 8) | (sfx[z+6] << 16) | (sfx[z+7] << 24);
+	    int num_frames = (data_size / num_channels) / (bit_depth / 8);
+	    
             LOCK_AUDIO_DEVICE()
             StrCopy(sfxList[sfxID].name, filePath);
-            sfxList[sfxID].buffer = WavDataToBuffer(&sfx[44], num_frames, num_channels,
+            sfxList[sfxID].buffer = WavDataToBuffer(&sfx[z+8], num_frames, num_channels,
                 bit_depth);
             sfxList[sfxID].length = num_frames * 2;
             sfxList[sfxID].loaded = true;
             UNLOCK_AUDIO_DEVICE()
-
+		
             delete[] sfx;
 #endif
         }

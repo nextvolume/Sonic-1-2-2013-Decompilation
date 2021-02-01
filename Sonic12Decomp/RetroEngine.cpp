@@ -5,6 +5,10 @@ bool engineDebugMode = false;
 
 RetroEngine Engine = RetroEngine();
 
+#if RETRO_USING_ALLEGRO4
+volatile bool mouse_state_changed=true;
+#endif
+
 inline int getLowerRate(int intendRate, int targetRate)
 {
     int result   = 0;
@@ -262,6 +266,13 @@ bool processEvents()
 	
 	wasBackspace = key[KEY_BACKSPACE];
 	wasEsc = key[KEY_ESC];
+	
+	if (mouse_state_changed) {
+            touchX[0] = mouse_x / Engine.windowScale;
+            touchY[0] = mouse_y / Engine.windowScale;
+            touchDown[0] = mouse_b & 1;
+            touches=1;
+        } 
 #endif
 
     return true;
@@ -462,6 +473,11 @@ void RetroEngine::Init()
 #if RETRO_USING_ALLEGRO4
 volatile int display_frame=0;
 
+void retro_mouse_callback(int flags) {
+    mouse_state_changed=true;
+}
+END_OF_FUNCTION(retro_mouse_callback)
+
 void display_frame_handler(void) 
 {
     display_frame++;
@@ -510,6 +526,10 @@ void RetroEngine::Run()
     LOCK_VARIABLE(display_frame);
     LOCK_FUNCTION(display_frame_handler);
     install_int_ex(display_frame_handler, BPS_TO_TIMER(refreshRate));
+    install_mouse();
+    enable_hardware_cursor();
+    show_mouse(screen);
+    mouse_callback=retro_mouse_callback;
    
     inputDevice[INPUT_UP].keyMappings = KEY_UP;
     inputDevice[INPUT_DOWN].keyMappings = KEY_DOWN;
