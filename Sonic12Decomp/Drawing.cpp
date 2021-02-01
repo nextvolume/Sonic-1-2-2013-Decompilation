@@ -451,7 +451,7 @@ void ReleaseRenderDevice()
     destroy_bitmap(Engine.screenBuffer);
 
 #if RETRO_DOS
-    destroy_bitmap(Engine.screen8Buffer);
+    destroy_bitmap(screen8Buffer);
 #endif    
     
 #endif
