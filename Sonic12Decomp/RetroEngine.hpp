@@ -195,9 +195,22 @@ enum RetroGameType {
 
 #if RETRO_USING_ALLEGRO4
 #include <allegro.h>
+
+#if RETRO_WSSAUDIO
+#ifdef __cplusplus
+
+extern "C" {
+#include <wss.h>
+}
+#endif
+#endif
+
 #endif
 
 #if RETRO_DOS
+
+
+
 extern int useVGAMode;
 #endif
 
@@ -208,6 +221,9 @@ extern bool engineDebugMode;
 #include "Ini.hpp"
 #include "Network.hpp"
 
+#if RETRO_USE_MEMORYIO
+#include "MemoryIO.hpp"
+#endif
 #include "Math.hpp"
 #include "Reader.hpp"
 #include "String.hpp"
@@ -225,6 +241,7 @@ extern bool engineDebugMode;
 #include "Text.hpp"
 #include "Userdata.hpp"
 #include "Debug.hpp"
+
 
 // Native Entities
 #include "PauseMenu.hpp"

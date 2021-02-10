@@ -28,6 +28,11 @@ ifneq ($(USE_ALLEGRO4),)
 		-DRETRO_USING_ALLEGRO4 -DRETRO_DOS $(CXXFLAGS)
 		LDFLAGS_ALL = $(LDFLAGS)
 		LIBS_ALL = -lvorbisfile  -lvorbis -logg -lalleg $(LIBS)
+		
+		ifneq ($(WSSAUDIO),)
+			CXXFLAGS_ALL += -DRETRO_WSSAUDIO
+			LIBS_ALL += -lwss
+		endif
 	else
 		CXXFLAGS_ALL = $(shell pkg-config --cflags vorbisfile vorbis) $(shell allegro-config --cppflags) \
 		-DBASE_PATH='"$(BASE_PATH)"' -DRETRO_USING_ALLEGRO4 $(CXXFLAGS)
@@ -44,6 +49,11 @@ endif
 ifneq ($(FORCE_CASE_INSENSITIVE),)
 	CXXFLAGS_ALL += -DFORCE_CASE_INSENSITIVE
 	SOURCES += Sonic12Decomp/fcaseopen.cpp
+endif
+
+ifneq ($(MEMORYIO),)
+	CXXFLAGS_ALL += -DRETRO_USE_MEMORYIO
+	SOURCES += Sonic12Decomp/MemoryIO.cpp
 endif
 
 objects/%.o: %

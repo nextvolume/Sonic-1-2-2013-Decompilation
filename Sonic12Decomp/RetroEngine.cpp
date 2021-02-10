@@ -471,7 +471,7 @@ void RetroEngine::Init()
 }
 
 #if RETRO_USING_ALLEGRO4
-volatile int display_frame=0;
+static volatile int display_frame=0;
 
 void retro_mouse_callback(int flags) {
     mouse_state_changed=true;
@@ -486,12 +486,46 @@ void display_frame_handler(void)
 END_OF_FUNCTION(display_frame_handler)
 #endif
 
+#if RETRO_WSSAUDIO
+static int sampleConvSize;
+static volatile int audio_tick = 0;
+
+Sint16 *sampleConvBuf;
+#endif
+
 void RetroEngine::ResetFrameCounter()
 {
 #ifdef RETRO_USING_ALLEGRO4
 	display_frame = 0;
+#if RETRO_WSSAUDIO
+	audio_tick = 0;
+#endif
 #endif
 }
+
+#if RETRO_WSSAUDIO
+static int latency_size = 48000 / 30;
+
+static int wssaudio_write(short * buffer, int len)
+{
+	int samples = w_get_buffer_size() - w_get_latency() - latency_size;
+	if((samples <= 0) || (len == 0))
+		return 0;
+	if(len > samples)
+		len = samples;
+	w_lock_mixing_buffer(len);
+	w_mixing_stereo(buffer, len, 256, 256);
+	w_unlock_mixing_buffer();
+	return len;
+}
+
+void audio_tick_handler(void) 
+{
+    audio_tick++;
+    //audio_tick &= 3;
+}
+END_OF_FUNCTION(audio_tick_handler)
+#endif
 
 void RetroEngine::Run()
 {
@@ -526,6 +560,11 @@ void RetroEngine::Run()
     LOCK_VARIABLE(display_frame);
     LOCK_FUNCTION(display_frame_handler);
     install_int_ex(display_frame_handler, BPS_TO_TIMER(refreshRate));
+#if RETRO_WSSAUDIO
+    LOCK_VARIABLE(audio_tick);
+    LOCK_FUNCTION(audio_tick_handler);
+    install_int_ex(audio_tick_handler, BPS_TO_TIMER((44100 * 2) / AUDIO_SAMPLES));
+#endif
     install_mouse();
     enable_hardware_cursor();
     show_mouse(screen);
@@ -547,13 +586,43 @@ void RetroEngine::Run()
     inputDevice[INPUT_SELECT].keyMappings = KEY_SPACE;
 
     unsigned char *str;
+    
+#if RETRO_WSSAUDIO
+     int smpcnt = (float)AUDIO_SAMPLES / 2;
+
+    if (wssSampleRate != 44100) {
+	sampleConvSize = Resample_s16(NULL, NULL, 44100, wssSampleRate, smpcnt, 2) * 2 * 2;
+	sampleConvBuf = (Sint16*)malloc(sampleConvSize);
+    }
+    else
+        sampleConvSize = -1;
+#endif
 
     while (running) {
+#if RETRO_WSSAUDIO
+	if (audioEnabled) {
+		if(audio_tick > 0) {
+		    Sint16 *str = musInfo.stream;
+
+		    ProcessAudioPlayback(NULL, (Uint8*)str, smpcnt);
+		    
+		    if (sampleConvSize == -1)
+			wssaudio_write(musInfo.stream, smpcnt);
+		    else {
+			Resample_s16(musInfo.stream, sampleConvBuf, 44100, wssSampleRate, smpcnt, 2);
+			wssaudio_write(sampleConvBuf, (sampleConvSize / 2) / 2);
+	            }
+	
+		    audio_tick=0;
+		}
+        }	
+#else
 	if ( audioEnabled && ( str = (unsigned char*)get_audio_stream_buffer(musInfo.stream) )) {
 		ProcessAudioPlayback(NULL, str, AUDIO_SAMPLES);
 		free_audio_stream_buffer(musInfo.stream);
 	}
-    
+#endif
+
 	if (display_frame) {	
 	    running = processEvents();
 	    RenderRenderDevice();
@@ -574,6 +643,8 @@ void RetroEngine::Run()
 	    
 	    display_frame = 0;
         }
+#if RETRO_WSSAUDIO
+#endif
     }
 #endif
 
@@ -583,6 +654,10 @@ void RetroEngine::Run()
 
 #if RETRO_USING_SDL1 || RETRO_USING_SDL2
     SDL_Quit();
+#endif
+
+#if RETRO_WSSAUDIO
+    w_sound_device_exit();
 #endif
 }
 

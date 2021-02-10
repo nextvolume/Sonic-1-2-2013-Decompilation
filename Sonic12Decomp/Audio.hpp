@@ -49,7 +49,7 @@ struct TrackInfo {
 };
 
 struct MusicPlaybackInfo {
-#if !RETRO_DISABLE_OGGVORBIS	
+#if !RETRO_DISABLE_OGGVORBIS
     OggVorbis_File vorbisFile;
     int vorbBitstream;
 #endif
@@ -60,8 +60,13 @@ struct MusicPlaybackInfo {
     SDL_AudioStream *stream;
 #endif
 #if RETRO_USING_ALLEGRO4
+#if RETRO_WSSAUDIO
+    Sint16 *stream;
+#else
     AUDIOSTREAM *stream;
-#endif	
+#endif
+#endif
+	
     Sint16 *buffer;
     FileInfo fileInfo;
     bool trackLoop;
@@ -266,5 +271,14 @@ inline void ReleaseAudioDevice()
     ReleaseStageSfx();
     ReleaseGlobalSfx();
 }
+
+#if !RETRO_USING_SDL2 && !RETRO_USING_SDL1
+uint64_t Resample_s16(const int16_t *input, int16_t *output, int inSampleRate, int outSampleRate, uint64_t inputSize,
+                      uint32_t channels);
+#endif
+
+#if RETRO_WSSAUDIO
+extern int wssSampleRate;
+#endif
 
 #endif // !AUDIO_H

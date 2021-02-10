@@ -38,6 +38,35 @@ static Sint16 *WavDataToBuffer(void *data, int num_frames, int num_channels,
 		int bit_depth);
 #endif
 
+#if RETRO_WSSAUDIO
+int wssSampleRate;
+
+bool wssaudio_init_device(int rate) {    
+    if (!w_sound_device_init(28, rate)) { // 28 = High-Definition Audio
+	printLog("Unable to open HDA audio device: %s", w_get_error_message());
+    } else {
+        printLog("WSS audio HDA init OK.");
+	return true;
+    }
+    
+    if (!w_sound_device_init(3, rate)) { // 3 = AC97 auto detected
+        printLog("Unable to open AC97 audio device: %s", w_get_error_message());
+    } else {
+        printLog("WSS audio AC97 init OK.");
+        return true;
+    }
+
+    if (!w_sound_device_init(1, rate)) { // 1 = Sound Blaster autodetect
+        printLog("Unable to open Sound Blaster audio device: %s", w_get_error_message());
+    } else {
+        printLog("WSS audio Sound Blaster init OK.");
+        return true;
+    }
+    
+    return false;
+}
+#endif
+
 int InitAudioPlayback()
 {
 #if !RETRO_DISABLE_AUDIO
@@ -78,6 +107,21 @@ int InitAudioPlayback()
 #endif
 
 #if RETRO_USING_ALLEGRO4
+
+#if RETRO_WSSAUDIO
+    w_set_device_master_volume(0);
+
+    audioEnabled = wssaudio_init_device(44100);
+    
+    if (audioEnabled) {
+        wssSampleRate = w_get_nominal_sample_rate();
+	printLog("Audio sample rate = %d", wssSampleRate); 
+    }
+    
+    sleep(3);
+    
+    musInfo.stream = new Sint16[AUDIO_SAMPLES * 2];
+#else
     if (install_sound(DIGI_AUTODETECT, 0, NULL) == -1) {
         printLog("Unable to open audio device: %s", allegro_error);
         audioEnabled = false;
@@ -85,7 +129,8 @@ int InitAudioPlayback()
     }
     
     musInfo.stream = play_audio_stream(AUDIO_SAMPLES, 16, 1, AUDIO_FREQUENCY, 255, 127);
-    
+#endif
+
     audioEnabled = true;
 #endif
 
@@ -375,10 +420,12 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
 
             int error = ov_open_callbacks(&musInfo, &musInfo.vorbisFile, NULL, 0, callbacks);
             if (error != 0) {
-            }
+		musInfo.loaded = false;
+	    }else {
+            
 
             musInfo.vorbBitstream = -1;
-            musInfo.vorbisFile.vi = ov_info(&musInfo.vorbisFile, -1);
+         //   musInfo.vorbisFile.vi = ov_info(&musInfo.vorbisFile, -1);
 
             samples = (unsigned long long)ov_pcm_total(&musInfo.vorbisFile, -1);
 
@@ -415,6 +462,7 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
             trackID      = trackBuffer;
             trackBuffer  = -1;
         }
+	}
     }
     
 #if RETRO_USING_SDL2 || RETRO_USING_SDL1
@@ -485,9 +533,9 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
     }
 #else
 // Generic (platform-independent) code that mixes music and SFX together into the stream
-    int numbytes = AUDIO_SAMPLES * 2 * 2;
+    int numbytes = len * 2 * 2;
     Sint16* streamS = (Sint16*)stream;
-
+    
     memset(stream, 0x0, numbytes);
     if (musicStatus == MUSIC_READY || musicStatus == MUSIC_PLAYING) {
         char* p = (char*)stream;
@@ -506,14 +554,18 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
                     musicStatus = MUSIC_STOPPED;
                     break;
                 }
-            }
+            }else if (r == OV_HOLE || r == OV_EBADLINK ||
+		r == OV_EINVAL) {
+		musicStatus = MUSIC_STOPPED;
+		break;
+	    }
 
             bytesRead += r;
             p += r;
         }
 
         if (bytesRead > 0) {
-            for (int x = 0; x < bytesRead / 2; x++) {
+            for (int x = 0; (x < bytesRead / 2) && (x < numbytes / 2); x++) {
                 Sint32 c = ADJUST_VOLUME(streamS[x], (bgmVolume * masterVolume) / MAX_VOLUME);
 
                 streamS[x] = (c > 0x7FFF) ? 0x7FFF : c;
@@ -530,12 +582,12 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
             continue;
 
         if (sfx->samplePtr) {
-            Sint16 buffer[AUDIO_SAMPLES * 2];
+            Sint16 buffer[len * 2];
 
             memset(buffer, 0, numbytes);
 
             size_t samples_done = 0;
-            int samples_to_do = AUDIO_SAMPLES * 2;
+            int samples_to_do = len * 2;
 
             while (samples_done != samples_to_do) {
                 size_t sampleLen = (sfx->sampleLength < samples_to_do - samples_done) ? sfx->sampleLength : samples_to_do - samples_done;
@@ -556,7 +608,7 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
                 }
             }
 
-            for (int x = 0; x < samples_done; x++) {
+            for (int x = 0; (x < samples_done) && (x < numbytes / 2); x++) {
                 Sint32 c = buffer[x] / 2 + streamS[x];
                 c = ADJUST_VOLUME(c, (sfxVolume * 100) / MAX_VOLUME);
 
@@ -566,9 +618,9 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
     }
 #endif
 
-#if RETRO_USING_ALLEGRO4
+#if RETRO_USING_ALLEGRO4 && !RETRO_WSSAUDIO
 // Allegro needs unsigned samples		
-	for (int x = 0; x < AUDIO_SAMPLES * 2; x++)
+	for (int x = 0; x < len * 2; x++)
 		streamS[x] ^= 0x8000;
 #endif
 	
@@ -1000,3 +1052,34 @@ void SetSfxAttributes(int sfx, int loopCount, sbyte pan)
     UNLOCK_AUDIO_DEVICE()
 #endif
 }
+
+#if !RETRO_USING_SDL2 && !RETRO_USING_SDL1
+// from https://github.com/cpuimage/resampler, by Zhihan Gao
+uint64_t Resample_s16(const int16_t *input, int16_t *output, int inSampleRate, int outSampleRate, uint64_t inputSize,
+                      uint32_t channels
+) {
+    uint64_t outputSize = (uint64_t) (inputSize * (double) outSampleRate / (double) inSampleRate);
+    outputSize -= outputSize % channels;
+    if (output == NULL)
+        return outputSize;
+    if (input == NULL)
+        return 0;
+    double stepDist = ((double) inSampleRate / (double) outSampleRate);
+    const uint64_t fixedFraction = (1LL << 32);
+    const double normFixed = (1.0 / (1LL << 32));
+    uint64_t step = ((uint64_t) (stepDist * fixedFraction + 0.5));
+    uint64_t curOffset = 0;
+    for (uint32_t i = 0; i < outputSize; i += 1) {
+        for (uint32_t c = 0; c < channels; c += 1) {
+            *output++ = (int16_t) (input[c] + (input[c + channels] - input[c]) * (
+                    (double) (curOffset >> 32) + ((curOffset & (fixedFraction - 1)) * normFixed)
+            )
+            );
+        }
+        curOffset += step;
+        input += (curOffset >> 32) * channels;
+        curOffset &= (fixedFraction - 1);
+    }
+    return outputSize;
+}
+#endif

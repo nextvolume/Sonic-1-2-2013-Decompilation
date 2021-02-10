@@ -23,6 +23,16 @@
 #define fClose(file)                                    SDL_RWclose(file)
 #define fWrite(buffer, elementSize, elementCount, file) SDL_RWwrite(file, buffer, elementSize, elementCount)
 #else
+
+#if RETRO_USE_MEMORYIO
+#define FileIO                                          MemFILE
+#define fOpen(path, mode)                               mem_fopen(path, mode)
+#define fReadFunc(buffer, elementSize, elementCount, file)  mem_fread(buffer, elementSize, elementCount, file)
+#define fSeek(file, offset, whence)                     mem_fseek(file, offset, whence)
+#define fTell(file)                                     mem_ftell(file)
+#define fClose(file)                                    mem_fclose(file)
+#define fWrite(buffer, elementSize, elementCount, file) mem_fwrite(buffer, elementSize, elementCount, file)
+#else
 #define FileIO                                          FILE
 #define fOpen(path, mode)                               fopen(path, mode)
 #define fReadFunc(buffer, elementSize, elementCount, file)  fread(buffer, elementSize, elementCount, file)
@@ -30,6 +40,8 @@
 #define fTell(file)                                     ftell(file)
 #define fClose(file)                                    fclose(file)
 #define fWrite(buffer, elementSize, elementCount, file) fwrite(buffer, elementSize, elementCount, file)
+#endif
+
 #endif
 
 #endif
