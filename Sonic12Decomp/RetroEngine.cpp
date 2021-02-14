@@ -486,7 +486,7 @@ void display_frame_handler(void)
 END_OF_FUNCTION(display_frame_handler)
 #endif
 
-#if RETRO_WSSAUDIO
+#if RETRO_WSSAUDIO || RETRO_DOSSOUND
 static int sampleConvSize;
 static volatile int audio_tick = 0;
 
@@ -525,6 +525,34 @@ void audio_tick_handler(void)
     //audio_tick &= 3;
 }
 END_OF_FUNCTION(audio_tick_handler)
+#endif
+
+#if RETRO_DOSSOUND
+
+static int dossound_get_buffer_number(void)
+{
+	unsigned char c;
+
+	_dosmemgetb(musInfo.curBufNumAddr, 1, &c);
+	
+	return c;
+}
+
+static bool dossound_buffer_number_changed(int *bufNum) {
+	static int old = -1;
+	
+	int n = dossound_get_buffer_number();
+	bool r = (old != n);
+	
+	old = n;
+	*bufNum = n;
+	return r;
+}
+
+static void dossound_write_to_buffer(int bufNum, void *data) {
+	dosmemput(data, musInfo.bufSize, musInfo.bufAddr + (bufNum * musInfo.bufSize));
+}
+
 #endif
 
 void RetroEngine::Run()
@@ -588,7 +616,7 @@ void RetroEngine::Run()
     unsigned char *str;
     
 #if RETRO_WSSAUDIO
-     int smpcnt = (float)AUDIO_SAMPLES / 2;
+    int smpcnt = (float)AUDIO_SAMPLES / 2;
 
     if (wssSampleRate != 44100) {
 	sampleConvSize = Resample_s16(NULL, NULL, 44100, wssSampleRate, smpcnt, 2) * 2 * 2;
@@ -598,13 +626,15 @@ void RetroEngine::Run()
         sampleConvSize = -1;
 #endif
 
+#if RETRO_DOSSOUND
+    int playingBuf;
+#endif
+
     while (running) {
 #if RETRO_WSSAUDIO
 	if (audioEnabled) {
 		if(audio_tick > 0) {
-		    Sint16 *str = musInfo.stream;
-
-		    ProcessAudioPlayback(NULL, (Uint8*)str, smpcnt);
+		    ProcessAudioPlayback(NULL, (Uint8*)musInfo.stream, smpcnt);
 		    
 		    if (sampleConvSize == -1)
 			wssaudio_write(musInfo.stream, smpcnt);
@@ -616,6 +646,14 @@ void RetroEngine::Run()
 		    audio_tick=0;
 		}
         }	
+#elif RETRO_DOSSOUND
+	if (audioEnabled) {
+		if(dossound_buffer_number_changed(&playingBuf)) {
+		    ProcessAudioPlayback(NULL, (Uint8*)musInfo.stream, musInfo.bufSize / 2 / 2);
+		    
+		    dossound_write_to_buffer(!playingBuf, musInfo.stream);
+		}
+	}
 #else
 	if ( audioEnabled && ( str = (unsigned char*)get_audio_stream_buffer(musInfo.stream) )) {
 		ProcessAudioPlayback(NULL, str, AUDIO_SAMPLES);
@@ -658,6 +696,16 @@ void RetroEngine::Run()
 
 #if RETRO_WSSAUDIO
     w_sound_device_exit();
+#endif
+
+#if RETRO_DOSSOUND
+    if (audioEnabled) {
+	__dpmi_regs i;
+
+        i.h.ah = 0x21; // stop
+
+        __dpmi_int(DOSSOUND_INT, &i);
+    }
 #endif
 }
 

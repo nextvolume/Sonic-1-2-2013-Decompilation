@@ -203,14 +203,20 @@ extern "C" {
 #include <wss.h>
 }
 #endif
+
+#endif
+
+#if RETRO_DOSSOUND
+#define DOSSOUND_INT	0x64
+
+#include <dos.h>
+#include <dpmi.h>
+#include <sys/movedata.h>
 #endif
 
 #endif
 
 #if RETRO_DOS
-
-
-
 extern int useVGAMode;
 #endif
 

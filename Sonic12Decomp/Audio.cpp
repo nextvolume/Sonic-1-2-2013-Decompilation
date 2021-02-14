@@ -121,7 +121,68 @@ int InitAudioPlayback()
     sleep(3);
     
     musInfo.stream = new Sint16[AUDIO_SAMPLES * 2];
-#else
+#elif RETRO_DOSSOUND
+    __dpmi_regs i;
+    
+    bzero(&i, sizeof(__dpmi_regs));
+
+// Check if the interrupt vector for DOSSound is hooked up.
+// If it isn't, it means that DOSSound was not installed.
+
+    i.h.ah = 0x35;
+    i.h.al = DOSSOUND_INT;
+
+    __dpmi_int(0x21, &i);
+    
+    audioEnabled = i.x.es || i.x.bx;
+
+    if (!audioEnabled) {
+        printLog("Audio not enabled because DOSSound was not installed!");
+    } else {
+	bzero(&i, sizeof(__dpmi_regs));
+    
+        i.h.ah = 0x40; // Return Vendor/Device
+
+        __dpmi_int(DOSSOUND_INT, &i);
+    
+        printLog("Vendor ID = 0x%04x", i.x.bx);
+        printLog("Device ID = 0x%04x", i.x.cx);
+
+        i.h.ah = 0x50; // Return segments of internal buffers
+    
+        __dpmi_int(DOSSOUND_INT, &i);
+    
+        musInfo.bufAddr = i.x.bx << 4;
+        musInfo.bufSize = i.x.cx << 4;
+    
+        printLog("Buffer address = 0x%05x", musInfo.bufAddr);
+        printLog("Size = %d", musInfo.bufSize);
+
+        i.h.ah = 0x03; // Query Status
+    
+        __dpmi_int(DOSSOUND_INT, &i);
+    
+        musInfo.curBufNumAddr = (i.x.es << 4) + i.x.di + 11;
+        musInfo.sampleRate = 44100;
+
+        printLog("curBufNumAddr address = 0x%05x", musInfo.curBufNumAddr);
+    
+        i.h.ah = 0x10; // Set Volume
+        i.h.bh = 0; // volume for left (max)
+        i.h.bl = 0; // volume for right (max)
+    
+        __dpmi_int(DOSSOUND_INT, &i);
+    
+        i.h.ah = 0x51; // Play PCM data
+        i.x.bx = musInfo.sampleRate;
+    
+        __dpmi_int(DOSSOUND_INT, &i);
+    
+       musInfo.stream = new Sint16[musInfo.bufSize / 2];
+    }
+    
+    sleep(3);
+#else   
     if (install_sound(DIGI_AUTODETECT, 0, NULL) == -1) {
         printLog("Unable to open audio device: %s", allegro_error);
         audioEnabled = false;
@@ -618,8 +679,8 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
     }
 #endif
 
-#if RETRO_USING_ALLEGRO4 && !RETRO_WSSAUDIO
-// Allegro needs unsigned samples		
+#if RETRO_USING_ALLEGRO4 && !RETRO_WSSAUDIO && !RETRO_DOSSOUND
+// Allegro needs unsigned samples
 	for (int x = 0; x < len * 2; x++)
 		streamS[x] ^= 0x8000;
 #endif

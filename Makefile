@@ -33,6 +33,10 @@ ifneq ($(USE_ALLEGRO4),)
 			CXXFLAGS_ALL += -DRETRO_WSSAUDIO
 			LIBS_ALL += -lwss
 		endif
+		
+		ifneq ($(DOSSOUND),)
+			CXXFLAGS_ALL += -DRETRO_DOSSOUND
+		endif
 	else
 		CXXFLAGS_ALL = $(shell pkg-config --cflags vorbisfile vorbis) $(shell allegro-config --cppflags) \
 		-DBASE_PATH='"$(BASE_PATH)"' -DRETRO_USING_ALLEGRO4 $(CXXFLAGS)

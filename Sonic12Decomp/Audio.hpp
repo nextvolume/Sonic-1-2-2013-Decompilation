@@ -62,6 +62,12 @@ struct MusicPlaybackInfo {
 #if RETRO_USING_ALLEGRO4
 #if RETRO_WSSAUDIO
     Sint16 *stream;
+#elif RETRO_DOSSOUND
+    Sint16 *stream;
+    unsigned bufAddr;
+    unsigned bufSize;
+    unsigned curBufNumAddr;
+    unsigned sampleRate;
 #else
     AUDIOSTREAM *stream;
 #endif
