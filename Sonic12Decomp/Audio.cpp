@@ -604,7 +604,7 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
         int bytesRead = 0;
 
         while (bytesRead < numbytes) {
-            int r = ov_read(&musInfo.vorbisFile, (char*)p, 256, 0, 2, 1, &musInfo.vorbBitstream);
+            int r = ov_read(&musInfo.vorbisFile, (char*)p, 256, isBigEndian, 2, 1, &musInfo.vorbBitstream);
 
             if (r == 0) {
                 // We've reached the end of the file
@@ -825,6 +825,19 @@ static Sint16* WavDataToBuffer(void* data, int num_frames, int num_channels,
             out[(x * 2) + 1] = (src8[x] << 8) ^ 0x8000;
         }
     }
+
+#if BIG_ENDIAN
+    if (bit_depth == 16) {
+        Uint16 s;
+ 
+        for (int x = 0; x < num_frames; x++) {
+            s = out[x*2]; 
+            out[x*2] = (s>>8) | (s&0xff)<<8;
+            s = out[(x * 2) + 1];
+            out[(x * 2) + 1] = (s>>8) | (s&0xff)<<8;
+        }
+    }
+#endif
 
     return out;
 }

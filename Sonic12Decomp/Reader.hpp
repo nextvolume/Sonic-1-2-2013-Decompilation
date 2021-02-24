@@ -75,7 +75,7 @@ struct RSDKFileInfo {
 
 struct RSDKContainer {
     RSDKFileInfo files[0x400];
-    int fileCount;
+    short fileCount;
 };
 
 extern RSDKContainer rsdkContainer;

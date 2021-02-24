@@ -24,6 +24,19 @@ FileIO *cFileHandle = nullptr;
 
 int fRead(void *ptr, int size, int nmemb, FileIO *stream) {
 	int r = fReadFunc(ptr,size,nmemb,stream);
+
+#if BIG_ENDIAN
+	if (size > 1) {
+		Uint8 b[size];
+		Uint8 *p = (Uint8*)ptr;
+
+		memcpy(b, ptr, size);
+
+		for (int s = 0; s < size; s++)
+			p[s] = b[size-1-s];
+	}
+#endif
+
 	Engine.ResetFrameCounter();
 	return r;
 }

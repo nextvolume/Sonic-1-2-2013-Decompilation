@@ -149,26 +149,24 @@ unsigned *md5(const char *msg, int mlen)
 
     for (q = 0; q < 4; q++) h[q] = h0[q]; // initialize
 
-    {
-        grps = 1 + (mlen + 8) / 64;
-        msg2 = (unsigned char*)malloc(64 * grps);
-        memcpy(msg2, msg, mlen);
-        msg2[mlen] = (unsigned char)0x80;
-        q          = mlen + 1;
-        while (q < 64 * grps) {
-            msg2[q] = 0;
-            q++;
-        }
-        {
-            //            unsigned char t;
-            WBunion u;
-            u.w = 8 * mlen;
-            //            t = u.b[0]; u.b[0] = u.b[3]; u.b[3] = t;
-            //            t = u.b[1]; u.b[1] = u.b[2]; u.b[2] = t;
-            q -= 8;
-            memcpy(msg2 + q, &u.w, 4);
-        }
-    }
+   
+    grps = 1 + (mlen + 8) / 64;
+    
+    msg2 = (unsigned char*)malloc(64 * grps);
+    bzero(msg2, 64 * grps);
+    memcpy(msg2, msg, mlen);
+    msg2[mlen] = (unsigned char)0x80;
+        
+    int uW = 8*mlen;
+
+    q = 64*grps - 8;
+		
+    msg2[q++] = uW;
+    msg2[q++] = uW >> 8;
+    msg2[q++] = uW >> 16;
+    msg2[q++] = uW >> 24;
+    
+    unsigned mmW;
 
     for (grp = 0; grp < grps; grp++) {
         memcpy(mm.b, msg2 + os, 64);
@@ -180,7 +178,13 @@ unsigned *md5(const char *msg, int mlen)
             o    = O[p];
             for (q = 0; q < 16; q++) {
                 g = (m * q + o) % 16;
-                f = abcd[1] + rol(abcd[0] + fctn(abcd) + k[q + 16 * p] + mm.w[g], rotn[q % 4]);
+		
+	        mmW = (mm.b[g*4]&0xff) |
+                      (mm.b[g*4+1]&0xff) << 8 |
+                      (mm.b[g*4+2]&0xff) << 16 |
+                      (mm.b[g*4+3]&0xff) << 24;
+
+                f = abcd[1] + rol(abcd[0] + fctn(abcd) + k[q + 16 * p] + mmW, rotn[q % 4]);
 
                 abcd[0] = abcd[3];
                 abcd[3] = abcd[2];
@@ -261,11 +265,10 @@ void ConvertIntegerToString(char *text, int value)
 void GenerateMD5FromString(const char *string, int len, byte *buffer)
 {
     unsigned *d = md5(string, len);
-    WBunion u;
 
     for (int i = 0; i < 4; ++i) {
-        u.w = d[i];
-        for (int c = 0; c < 4; ++c) buffer[(i << 2) + c] = u.b[c];
+        for (int c = 0; c < 4; ++c) buffer[(i << 2) + c] =
+            d[i] >> (c<<3);
     }
 }
 

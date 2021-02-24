@@ -223,6 +223,12 @@ extern int useVGAMode;
 extern bool usingCWD;
 extern bool engineDebugMode;
 
+#if BIG_ENDIAN
+static const bool isBigEndian = true;
+#else
+static const bool isBigEndian = false;
+#endif
+
 // Utils
 #include "Ini.hpp"
 #include "Network.hpp"
