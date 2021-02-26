@@ -72,6 +72,11 @@ struct MusicPlaybackInfo {
     AUDIOSTREAM *stream;
 #endif
 #endif
+
+#if RETRO_OSSAUDIO
+    int ossFd;
+    Sint16 *stream;
+#endif
 	
     Sint16 *buffer;
     FileInfo fileInfo;
@@ -171,6 +176,11 @@ inline void freeMusInfo()
 void SetMusicTrack(const char *filePath, byte trackID, bool loop, uint loopPoint);
 void SwapMusicTrack(const char *filePath, byte trackID, uint loopPoint, uint ratio);
 bool PlayMusic(int track, int musStartPos);
+
+#if !RETRO_USING_SDL2 && !RETRO_USING_SDL1
+void musicFifoReset(void);
+#endif
+
 inline void StopMusic()
 {
     musicStatus = MUSIC_STOPPED;
@@ -180,6 +190,10 @@ inline void StopMusic()
     freeMusInfo();
 #if RETRO_USING_SDL1 || RETRO_USING_SDL2
     SDL_UnlockAudio();
+#endif
+	
+#if !RETRO_USING_SDL2 && !RETRO_USING_SDL1
+    musicFifoReset();
 #endif
 }
 

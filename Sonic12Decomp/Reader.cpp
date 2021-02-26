@@ -25,7 +25,7 @@ FileIO *cFileHandle = nullptr;
 int fRead(void *ptr, int size, int nmemb, FileIO *stream) {
 	int r = fReadFunc(ptr,size,nmemb,stream);
 
-#if BIG_ENDIAN
+#ifdef RETRO_BIG_ENDIAN
 	if (size > 1) {
 		Uint8 b[size];
 		Uint8 *p = (Uint8*)ptr;

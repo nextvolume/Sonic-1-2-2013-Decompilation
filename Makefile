@@ -43,6 +43,18 @@ ifneq ($(USE_ALLEGRO4),)
 		LDFLAGS_ALL = $(LDFLAGS)
 		LIBS_ALL =  $(shell pkg-config --libs vorbisfile vorbis) $(shell allegro-config --libs) $(LIBS)	
 	endif	
+else ifneq ($(USE_XLIB),)
+	CXXFLAGS_ALL = -I/usr/X11R6/include  -DRETRO_USING_XLIB  $(CXXFLAGS)
+	LDFLAGS_ALL = $(LDFLAGS)
+	LIBS_ALL = -lX11 $(LIBS)
+	
+ifneq ($(USE_OSSAUDIO),)
+        CXXFLAGS_ALL += -DRETRO_OSSAUDIO
+	LIBS_ALL += $(shell pkg-config --libs vorbisfile vorbis) $(shell allegro-config --libs)
+else
+        CXXFLAGS_ALL +=  -DRETRO_DISABLE_OGGVORBIS -DRETRO_DISABLE_AUDIO
+endif
+
 else
 	CXXFLAGS_ALL = $(shell pkg-config --cflags --static sdl2 vorbisfile vorbis) \
                -DBASE_PATH='"$(BASE_PATH)"' $(CXXFLAGS)

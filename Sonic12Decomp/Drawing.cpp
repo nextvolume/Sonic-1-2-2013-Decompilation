@@ -237,6 +237,81 @@ int InitRenderDevice()
     Engine.borderless = false; // disabled
 #endif
 
+#if RETRO_USING_XLIB
+    Engine.display = XOpenDisplay(NULL);
+    
+    if (!Engine.display) {
+        printLog("ERROR: could not open X11 display!");
+	return 0;
+    }
+
+    int blackColor = BlackPixel(Engine.display, DefaultScreen(Engine.display));
+    int whiteColor = WhitePixel(Engine.display, DefaultScreen(Engine.display));
+    
+    Engine.window = XCreateSimpleWindow(Engine.display, DefaultRootWindow(Engine.display), 0, 0, 
+			SCREEN_XSIZE * Engine.windowScale, SCREEN_YSIZE * Engine.windowScale, 0, blackColor, blackColor);
+			
+    Engine.frameBuffer = new Uint16[SCREEN_XSIZE * SCREEN_YSIZE];
+    
+    Engine.useHQModes = false;
+    Engine.borderless = false;
+    
+    XSelectInput(Engine.display, Engine.window, StructureNotifyMask | KeyPressMask |
+        KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | FocusChangeMask);
+	
+    XMapWindow(Engine.display, Engine.window);
+    
+    Engine.gc = XCreateGC(Engine.display, Engine.window, 0, NULL);
+    
+    XSetForeground(Engine.display, Engine.gc, whiteColor);
+
+    XEvent e;
+
+    do {	
+        XNextEvent(Engine.display, &e);
+    }while(e.type != MapNotify);
+    
+    Engine.screenDepth = DefaultDepth(Engine.display, DefaultScreen(Engine.display));
+    
+    XImage *img = (XImage*)malloc(sizeof(XImage));
+    
+    img->width = SCREEN_XSIZE * Engine.windowScale;
+    img->height = SCREEN_YSIZE * Engine.windowScale;
+    
+    if (Engine.screenDepth == 16 && Engine.windowScale == 1) 
+        img->data = (char*)Engine.frameBuffer;
+    else
+        img->data = (char*)malloc(SCREEN_XSIZE * Engine.windowScale * 
+	                          SCREEN_YSIZE * Engine.windowScale * (Engine.screenDepth / 8));
+	
+    img->xoffset = 0;
+    img->format = ZPixmap;
+    img->byte_order = LSBFirst;
+    img->bitmap_unit = 16;
+    img->bitmap_bit_order = MSBFirst;
+    img->bitmap_pad = 16;
+    img->depth = Engine.screenDepth;
+    img->bytes_per_line = 0;
+    img->bits_per_pixel = Engine.screenDepth;
+    img->red_mask = 0xf800;
+    img->green_mask = 0x7e0;
+    img->blue_mask = 0x1f;
+      
+    XInitImage(img);
+    
+    Engine.screenImage = img;
+    
+    XStoreName(Engine.display, Engine.window, gameTitle);
+    
+    XSizeHints hints;
+    
+    hints.flags = PMinSize | PMaxSize;
+    hints.min_width = hints.max_width = img->width;
+    hints.min_height = hints.max_height = img->height;
+    
+    XSetWMNormalHints(Engine.display, Engine.window, &hints);
+#endif
+
     OBJECT_BORDER_X2 = SCREEN_XSIZE + 0x80;
     // OBJECT_BORDER_Y2 = SCREEN_YSIZE + 0x100;
     OBJECT_BORDER_X4 = SCREEN_XSIZE + 0x20;
@@ -427,6 +502,58 @@ void RenderRenderDevice()
 #endif
 	stretch_blit(Engine.screenBuffer, screen, 0, 0, Engine.screenBuffer->w, Engine.screenBuffer->h, 0, 0, SCREEN_W, SCREEN_H);
 #endif
+
+#if RETRO_USING_XLIB
+      Uint16 c;
+
+      if (Engine.screenDepth == 16 && Engine.windowScale != 1) {
+	Uint16 *ds = (Uint16*)Engine.screenImage->data;
+
+	  for (int y = 0, p = 0; y < SCREEN_YSIZE; y++) {
+	      for (int d1 = 0; d1 < Engine.windowScale; d1++) {
+	          for (int x = 0; x < SCREEN_XSIZE; x++) {
+	                c = Engine.frameBuffer[y*SCREEN_XSIZE+x];
+		        for (int d2 = 0; d2 < Engine.windowScale; d2++) {
+		            *(ds++) = c;
+		        }
+	          }
+              }
+          }
+      } else if (Engine.screenDepth == 24) {	
+	  for (int y = 0, p = 0; y < SCREEN_YSIZE; y++) {
+	      for (int d1 = 0; d1 < Engine.windowScale; d1++) {
+	          for (int x = 0; x < SCREEN_XSIZE; x++) {
+	                c = Engine.frameBuffer[y*SCREEN_XSIZE+x];
+		        for (int d2 = 0; d2 < Engine.windowScale; d2++) {
+		            Engine.screenImage->data[p++] = (c & 31) << 3;
+	                    Engine.screenImage->data[p++] = ( (c >> 5) & 63) << 2;
+	                    Engine.screenImage->data[p++] = ( (c >> 11) & 31) << 3;
+		        }
+	          }
+              }
+          }
+      } else if (Engine.screenDepth == 32) {
+	  for (int y = 0, p = 0; y < SCREEN_YSIZE; y++) {
+	      for (int d1 = 0; d1 < Engine.windowScale; d1++) {
+	          for (int x = 0; x < SCREEN_XSIZE; x++) {
+	                c = Engine.frameBuffer[y*SCREEN_XSIZE+x];
+		        for (int d2 = 0; d2 < Engine.windowScale; d2++) {
+		            Engine.screenImage->data[p++] = (c & 31) << 3;
+	                    Engine.screenImage->data[p++] = ( (c >> 5) & 63) << 2;
+	                    Engine.screenImage->data[p++] = ( (c >> 11) & 31) << 3;
+			    Engine.screenImage->data[p++] = 0;
+		        }
+	          }
+              }
+          }
+      }
+
+      XPutImage(Engine.display, Engine.window, 
+          Engine.gc, Engine.screenImage, 0, 0, 0, 0, Engine.screenImage->width, Engine.screenImage->height);
+	  
+	  
+      XFlush(Engine.display);
+#endif
 }
 void ReleaseRenderDevice()
 {
@@ -455,6 +582,10 @@ void ReleaseRenderDevice()
         destroy_bitmap(screen8Buffer);
 #endif    
     
+#endif
+
+#if RETRO_USING_XLIB
+     XCloseDisplay(Engine.display);
 #endif
 }
 

@@ -100,7 +100,7 @@ typedef unsigned int Uint32;
 #define BASE_PATH            ""
 #endif
 
-#ifndef RETRO_USING_ALLEGRO4
+#if !defined(RETRO_USING_ALLEGRO4) && !defined(RETRO_USING_XLIB)
 
 #if RETRO_PLATFORM == RETRO_WIN || RETRO_PLATFORM == RETRO_OSX || RETRO_PLATFORM == RETRO_VITA || RETRO_PLATFORM == RETRO_UWP
 #define RETRO_USING_SDL1 (0)
@@ -220,10 +220,28 @@ extern "C" {
 extern int useVGAMode;
 #endif
 
+#if RETRO_USING_XLIB
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/XKBlib.h>
+#include <unistd.h>
+#include <sys/time.h>
+#endif
+
+#if RETRO_OSSAUDIO
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/soundcard.h>
+#endif
+
 extern bool usingCWD;
 extern bool engineDebugMode;
 
-#if BIG_ENDIAN
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define RETRO_BIG_ENDIAN
+#endif
+
+#ifdef RETRO_BIG_ENDIAN
 static const bool isBigEndian = true;
 #else
 static const bool isBigEndian = false;
@@ -376,6 +394,16 @@ public:
 
 #if RETRO_USING_ALLEGRO4
     BITMAP *screenBuffer = NULL;
+#endif
+
+#if RETRO_USING_XLIB
+    XImage *screenImage = NULL;
+    Display *display;
+    GC gc;
+    Window window;
+    int screenDepth;
+    
+    bool inputPressed[INPUT_MAX];
 #endif
 };
 

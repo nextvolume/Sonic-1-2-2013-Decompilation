@@ -36,6 +36,37 @@ int trackBuffer = -1;
 #if !RETRO_USING_SDL2 && !RETRO_USING_SDL1
 static Sint16 *WavDataToBuffer(void *data, int num_frames, int num_channels,
 		int bit_depth);
+		
+static unsigned char *musicFifoBuf = NULL;
+
+static int musicFifoPos=0;
+static int musicFifoSize=0;
+static bool musicFifoOnly = false;
+
+void musicFifoPush(void *data, int len) {
+	if ((musicFifoPos + len) > musicFifoSize) {
+		musicFifoSize = musicFifoPos + len + 0x4000;
+		musicFifoBuf = (unsigned char*)realloc(musicFifoBuf, musicFifoSize);
+	}
+	
+	memcpy(&musicFifoBuf[musicFifoPos], data, len);
+	musicFifoPos += len;
+}
+
+void musicFifoPop(void *dst, int len) {
+	memcpy(dst, musicFifoBuf, len);
+	
+	for (int x = 0; x < musicFifoPos; x++)
+            musicFifoBuf[x] = musicFifoBuf[x+len];
+	
+	musicFifoPos -= len;
+}
+
+void musicFifoReset(void) {
+	musicFifoPos=0;
+	musicFifoOnly=false;
+}
+		
 #endif
 
 #if RETRO_WSSAUDIO
@@ -193,6 +224,52 @@ int InitAudioPlayback()
 #endif
 
     audioEnabled = true;
+#endif
+
+#if RETRO_OSSAUDIO
+   const char *dev = "/dev/dsp";
+
+    int fd = open(dev, O_WRONLY);
+    
+    if (!fd) {
+        printLog("Could not open audio device: %s", dev);
+        audioEnabled = false;
+	return true;
+    }
+    
+    int p = AFMT_S16_NE;
+    int r;
+    
+    r = ioctl(fd, SNDCTL_DSP_SETFMT, &p) ;
+    
+    if (r == -1 || p != AFMT_S16_NE) {
+        printLog("Could not set audio format!");
+	audioEnabled = false;
+	return true;
+    }
+    
+    p = 2;
+    r = ioctl(fd, SNDCTL_DSP_CHANNELS, &p);
+    
+    if (r == -1 || p != 2) {
+        printLog("Could not set number of audio channels!");
+        audioEnabled = false;
+	return true;
+    }
+    
+    p = 44100;
+    r = ioctl(fd, SNDCTL_DSP_SPEED, &p);
+    
+    if (r == -1 || p != 44100) {
+        printLog("Could not set audio frequency!");
+	audioEnabled = false;
+	return true;
+   }
+   
+   musInfo.ossFd = fd;
+   musInfo.stream = new Sint16[(44100 / 60) * 4];
+   
+   printLog("OSS audio init OK.");
 #endif
 
     FileInfo info;
@@ -596,15 +673,14 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
 // Generic (platform-independent) code that mixes music and SFX together into the stream
     int numbytes = len * 2 * 2;
     Sint16* streamS = (Sint16*)stream;
+    char b[256];
     
     memset(stream, 0x0, numbytes);
     if (musicStatus == MUSIC_READY || musicStatus == MUSIC_PLAYING) {
-        char* p = (char*)stream;
-
         int bytesRead = 0;
 
-        while (bytesRead < numbytes) {
-            int r = ov_read(&musInfo.vorbisFile, (char*)p, 256, isBigEndian, 2, 1, &musInfo.vorbBitstream);
+        while (!musicFifoOnly && bytesRead < numbytes) {
+            int r = ov_read(&musInfo.vorbisFile, (char*)b, 256, isBigEndian, 2, 1, &musInfo.vorbBitstream);
 
             if (r == 0) {
                 // We've reached the end of the file
@@ -621,9 +697,16 @@ void ProcessAudioPlayback(void *userdata, Uint8 *stream, int len)
 		break;
 	    }
 
-            bytesRead += r;
-            p += r;
+            bytesRead += 256;
+	    musicFifoPush(b, 256);
         }
+
+	musicFifoPop(stream, numbytes);
+	
+	if (musicFifoPos > 0 && musicFifoPos % numbytes == 0)
+		musicFifoOnly = true;
+	else if (musicFifoPos == 0 && musicFifoOnly)
+		musicFifoOnly = false;
 
         if (bytesRead > 0) {
             for (int x = 0; (x < bytesRead / 2) && (x < numbytes / 2); x++) {
@@ -826,7 +909,7 @@ static Sint16* WavDataToBuffer(void* data, int num_frames, int num_channels,
         }
     }
 
-#if BIG_ENDIAN
+#ifdef RETRO_BIG_ENDIAN
     if (bit_depth == 16) {
         Uint16 s;
  

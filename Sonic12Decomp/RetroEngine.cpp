@@ -275,6 +275,60 @@ bool processEvents()
         } 
 #endif
 
+#if RETRO_USING_XLIB
+    KeySym ks;
+    XEvent e;
+
+    static bool wasEsc = false;
+    static bool wasBackspace = false;
+
+    while (XCheckWindowEvent(Engine.display, Engine.window,
+        KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | FocusChangeMask, &e)) {
+
+	if (e.type == FocusOut) {
+            bzero(Engine.inputPressed, sizeof(Engine.inputPressed));
+	    wasEsc = wasBackspace = false;
+	    continue;
+        }
+	
+	if ((e.type == ButtonPress || e.type == ButtonRelease) && e.xbutton.button == 1) {
+	    touchX[0] = e.xbutton.x / Engine.windowScale;
+	    touchY[0] = e.xbutton.y / Engine.windowScale;
+	    touchDown[0] = (e.type == ButtonPress);
+	    touches=1;
+	    continue;
+	}
+	
+	KeySym ks = XKeycodeToKeysym(Engine.display, e.xkey.keycode, 0);
+	
+	if (e.type == KeyPress) {
+           if (ks == XK_Escape && Engine.devMenu && !wasEsc) {
+	       Engine.gameMode = ENGINE_INITDEVMENU;
+	       wasEsc = true;
+           } else if (ks == XK_BackSpace && Engine.devMenu && !wasBackspace) {
+	       Engine.gameSpeed = (Engine.gameSpeed != 1) ? 1 : Engine.fastForwardSpeed;
+	       wasBackspace = true;
+           } else if (ks == XK_F4)
+	       return false;
+	} else if (e.type == KeyRelease) {
+	   if (ks == XK_Escape)
+               wasEsc = false;
+	   else if (ks == XK_BackSpace) 
+               wasBackspace = false;
+	}
+	
+	for(int i = 0; i < INPUT_MAX; i++) {
+	    if(i == INPUT_ANY)
+		continue;
+		       
+	    if (ks == inputDevice[i].keyMappings) {
+		Engine.inputPressed[i] = (e.type == KeyPress);
+		break;
+	    }
+	}
+    }
+#endif
+
     return true;
 }
 
@@ -681,8 +735,68 @@ void RetroEngine::Run()
 	    
 	    display_frame = 0;
         }
-#if RETRO_WSSAUDIO
+    }
 #endif
+
+#if RETRO_USING_XLIB
+    inputDevice[INPUT_UP].keyMappings = XK_Up;
+    inputDevice[INPUT_DOWN].keyMappings = XK_Down;
+    inputDevice[INPUT_LEFT].keyMappings = XK_Left;
+    inputDevice[INPUT_RIGHT].keyMappings = XK_Right;
+    inputDevice[INPUT_BUTTONA].keyMappings = XK_z;
+    inputDevice[INPUT_BUTTONB].keyMappings = XK_x;
+    inputDevice[INPUT_BUTTONC].keyMappings = XK_c;
+    inputDevice[INPUT_BUTTONX].keyMappings = XK_a;
+    inputDevice[INPUT_BUTTONY].keyMappings = XK_s;
+    inputDevice[INPUT_BUTTONZ].keyMappings = XK_d;
+    inputDevice[INPUT_BUTTONL].keyMappings = XK_q;
+    inputDevice[INPUT_BUTTONR].keyMappings = XK_w;
+    inputDevice[INPUT_START].keyMappings = XK_Return;
+    inputDevice[INPUT_SELECT].keyMappings = XK_space;
+
+#if RETRO_OSSAUDIO
+    int smpCnt = (44100 / 60);
+#endif
+
+    struct timeval t1;
+
+    gettimeofday(&t1, NULL);
+
+    while (running) {
+        if (!audioEnabled) {
+              struct timeval t2;
+
+              gettimeofday(&t2, NULL);
+	      
+	      int te = ( (t2.tv_sec * 1000) +
+			 (t2.tv_usec / 1000)) -
+		       ( (t1.tv_sec * 1000) +
+			 (t1.tv_usec / 1000));
+
+	      if (te > (1000 / 60))
+		  memcpy(&t1, &t2, sizeof(struct timeval));
+	      else
+	          continue;
+        }
+
+#if RETRO_OSSAUDIO
+        if (audioEnabled) {
+            ProcessAudioPlayback(NULL, (Uint8*)musInfo.stream, smpCnt);
+            write(musInfo.ossFd, musInfo.stream, smpCnt * 2 * sizeof(short));
+        }
+#endif
+    
+        running = processEvents();
+        RenderRenderDevice();
+
+	for (int s = 0; s < gameSpeed; ++s) {
+            ProcessInput();
+		
+            if (!masterPaused || frameStep) {
+                ProcessNativeObjects();
+                frameStep = false;
+	    }
+        }
     }
 #endif
 
