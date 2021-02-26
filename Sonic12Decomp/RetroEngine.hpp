@@ -237,7 +237,7 @@ extern int useVGAMode;
 extern bool usingCWD;
 extern bool engineDebugMode;
 
-#if __BYTE_ORDER == __BIG_ENDIAN
+#if defined(__LINUX__) && __BYTE_ORDER == __BIG_ENDIAN
 #define RETRO_BIG_ENDIAN
 #endif
 

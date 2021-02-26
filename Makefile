@@ -72,6 +72,10 @@ ifneq ($(MEMORYIO),)
 	SOURCES += Sonic12Decomp/MemoryIO.cpp
 endif
 
+ifneq ($(BIGENDIAN),)
+        CXXFLAGS_ALL += -DRETRO_BIG_ENDIAN
+endif
+
 objects/%.o: %
 	mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS_ALL) $^ -o $@ -c
