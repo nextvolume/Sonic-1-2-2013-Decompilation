@@ -63,6 +63,7 @@ void musicFifoPop(void *dst, int len) {
 }
 
 void musicFifoReset(void) {
+	bzero(musicFifoBuf, musicFifoSize);
 	musicFifoPos=0;
 	musicFifoOnly=false;
 }
@@ -343,6 +344,11 @@ int InitAudioPlayback()
 
     for (int i = 0; i < CHANNEL_COUNT; ++i) sfxChannels[i].sfxID = -1;
 #endif
+    
+#if RETRO_DISABLE_AUDIO
+    audioEnabled = false;
+#endif    
+    
     return true;
 
 }

@@ -20,6 +20,8 @@ byte eNybbleSwap;
 byte encryptionStringA[0x10];
 byte encryptionStringB[0x10];
 
+bool useDataFile = true;
+
 FileIO *cFileHandle = nullptr;
 
 int fRead(void *ptr, int size, int nmemb, FileIO *stream) {
@@ -46,7 +48,6 @@ bool CheckRSDKFile(const char *filePath)
     FileInfo info;
 
     Engine.usingDataFile = false;
-    Engine.usingBytecode = false;
 
     // CopyFilePath(filename, &rsdkName);
     cFileHandle = fOpen(filePath, "rb");
@@ -82,19 +83,23 @@ bool CheckRSDKFile(const char *filePath)
 
         fClose(cFileHandle);
         cFileHandle = NULL;
-        if (LoadFile("ByteCode/GlobalCode.bin", &info)) {
-            Engine.usingBytecode = true;
+        if (Engine.usingBytecode &&
+                LoadFile("ByteCode/GlobalCode.bin", &info)) {
             CloseFile();
-        }
+        } else
+	    Engine.usingBytecode = false;
+
         return true;
     }
     else {
         Engine.usingDataFile = false;
         cFileHandle = NULL;
-        if (LoadFile("ByteCode/GlobalCode.bin", &info)) {
-            Engine.usingBytecode = true;
+        if (Engine.usingBytecode &&
+                LoadFile("ByteCode/GlobalCode.bin", &info)) {
             CloseFile();
-        }
+        } else
+            Engine.usingBytecode = false;
+
         return false;
     }
 
@@ -109,6 +114,32 @@ bool LoadFile(const char *filePath, FileInfo *fileInfo)
         fClose(cFileHandle);
 
     cFileHandle = NULL;
+    
+    StrCopy(fileInfo->fileName, filePath);
+    StrCopy(fileName, fileInfo->fileName);
+
+    cFileHandle = fOpen(fileInfo->fileName, "rb");
+	    
+    if (cFileHandle) {
+        virtualFileOffset = 0;
+        fSeek(cFileHandle, 0, SEEK_END);
+        fileInfo->fileSize = (int)fTell(cFileHandle);
+        fileSize = fileInfo->vfileSize = fileInfo->fileSize;
+        fSeek(cFileHandle, 0, SEEK_SET);
+        readPos = 0;
+        fileInfo->readPos           = readPos;
+        fileInfo->useEncryption     = false;
+        fileInfo->fromDataFile      = false;
+        useEncryption               = false;
+        bufferPosition              = 0;
+        readSize                    = 0;
+	useDataFile                 = false;
+
+        printLog("Loaded File '%s'%s", filePath,
+	    Engine.usingDataFile?" [patch]":"");
+        return true;
+    }
+    
     if (Engine.usingDataFile) {
         StringLowerCase(fileInfo->fileName, filePath);
         StrCopy(fileName, fileInfo->fileName);
@@ -164,34 +195,17 @@ bool LoadFile(const char *filePath, FileInfo *fileInfo)
             fileInfo->eNybbleSwap       = eNybbleSwap;
             fileInfo->bufferPosition    = bufferPosition;
             fileInfo->useEncryption     = useEncryption;
+            fileInfo->fromDataFile      = true;
+	    
+	    useDataFile = true;
             printLog("Loaded File '%s'", filePath);
             return true;
         }
-        printLog("Couldn't load file '%s'", filePath);
-        return false;
     }
-    else {
-        StrCopy(fileInfo->fileName, filePath);
-        StrCopy(fileName, fileInfo->fileName);
-
-        cFileHandle = fOpen(fileInfo->fileName, "rb");
-        if (!cFileHandle) {
-            printLog("Couldn't load file '%s'", filePath);
-            return false;
-        }
-        virtualFileOffset = 0;
-        fSeek(cFileHandle, 0, SEEK_END);
-        fileInfo->fileSize = (int)fTell(cFileHandle);
-        fileSize = fileInfo->vfileSize = fileInfo->fileSize;
-        fSeek(cFileHandle, 0, SEEK_SET);
-        readPos = 0;
-        fileInfo->readPos           = readPos;
-        bufferPosition              = 0;
-        readSize                    = 0;
-
-        printLog("Loaded File '%s'", filePath);
-        return true;
-    }
+    
+    printLog("Couldn't load file '%s'", filePath);
+    
+    return false;
 }
 
 void GenerateELoadKeys(uint key1, uint key2)
@@ -314,13 +328,17 @@ void GetFileInfo(FileInfo *fileInfo)
     fileInfo->eStringNo         = eStringNo;
     fileInfo->eNybbleSwap       = eNybbleSwap;
     fileInfo->useEncryption     = useEncryption;
+    fileInfo->fromDataFile      = useDataFile;
     memcpy(encryptionStringA, fileInfo->encryptionStringA, 0x10 * sizeof(byte));
     memcpy(encryptionStringB, fileInfo->encryptionStringB, 0x10 * sizeof(byte));
 }
 
 void SetFileInfo(FileInfo *fileInfo)
 {
-    if (Engine.usingDataFile) {
+    useDataFile = fileInfo->fromDataFile;
+    useEncryption  = fileInfo->useEncryption;
+	
+    if (fileInfo->fromDataFile) {
         cFileHandle       = fOpen(rsdkName, "rb");
         virtualFileOffset = fileInfo->virtualFileOffset;
         vFileSize         = fileInfo->vfileSize;
@@ -334,7 +352,6 @@ void SetFileInfo(FileInfo *fileInfo)
         eStringPosB    = fileInfo->eStringPosB;
         eStringNo      = fileInfo->eStringNo;
         eNybbleSwap    = fileInfo->eNybbleSwap;
-        useEncryption  = fileInfo->useEncryption;
 
         if (useEncryption) {
             GenerateELoadKeys(vFileSize, (vFileSize >> 1) + 1);
@@ -358,7 +375,7 @@ void SetFileInfo(FileInfo *fileInfo)
 
 size_t GetFilePosition()
 {
-    if (Engine.usingDataFile)
+    if (useDataFile)
         return bufferPosition + readPos - readSize - virtualFileOffset;
     else
         return bufferPosition + readPos - readSize;
@@ -416,7 +433,7 @@ void SetFilePosition(int newPos)
         }
     }
     else {
-        if (Engine.usingDataFile)
+        if (useDataFile)
             readPos = virtualFileOffset + newPos;
         else
             readPos = newPos;
@@ -427,7 +444,7 @@ void SetFilePosition(int newPos)
 
 bool ReachedEndOfFile()
 {
-    if (Engine.usingDataFile)
+    if (useDataFile)
         return bufferPosition + readPos - readSize - virtualFileOffset >= vFileSize;
     else
         return bufferPosition + readPos - readSize >= fileSize;
@@ -519,7 +536,7 @@ size_t FileRead2(FileInfo *info, void *dest, int size)
 
 size_t GetFilePosition2(FileInfo* info)
 {
-    if (Engine.usingDataFile)
+    if (info->fromDataFile)
         return info->bufferPosition + info->readPos - info->virtualFileOffset;
     else
         return info->bufferPosition + info->readPos;
@@ -577,7 +594,7 @@ void SetFilePosition2(FileInfo *info, int newPos)
         }
     }
     else {
-        if (Engine.usingDataFile)
+        if (info->fromDataFile)
             info->readPos = info->virtualFileOffset + newPos;
         else
             info->readPos = newPos;

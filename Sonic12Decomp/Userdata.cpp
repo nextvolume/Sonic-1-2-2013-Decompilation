@@ -47,7 +47,8 @@ void InitUserdata()
         ini.SetInteger("Dev", "StartingSaveFile", Engine.startSave = 255);
         ini.SetInteger("Dev", "FastForwardSpeed", Engine.fastForwardSpeed = 8);
         ini.SetBool("Dev", "UseHQModes", Engine.useHQModes = true);
-
+	ini.SetBool("Dev", "UseBytecode", Engine.usingBytecode = true);
+	    
         ini.SetInteger("Game", "Language", Engine.language = RETRO_EN);
 
         ini.SetBool("Window", "FullScreen", Engine.startFullScreen = DEFAULT_FULLSCREEN);
@@ -155,6 +156,8 @@ void InitUserdata()
             Engine.fastForwardSpeed = 8;
         if (!ini.GetBool("Dev", "UseHQModes", &Engine.useHQModes))
             Engine.useHQModes = true;
+        if (!ini.GetBool("Dev", "UseBytecode", &Engine.usingBytecode))
+            Engine.usingBytecode = true;
 
         if (!ini.GetString("Dev", "DataFile", Engine.dataFile))
             StrCopy(Engine.dataFile, "Data.rsdk");
@@ -389,6 +392,10 @@ void writeSettings()
         "Dev", "UseHQComment",
         "Determines if applicable rendering modes (such as 3D floor from special stages) will render in \"High Quality\" mode or standard mode");
     ini.SetBool("Dev", "UseHQModes", Engine.useHQModes);
+    ini.SetComment(
+        "Dev", "UseBytecode",
+        "Use bytecode instead of scripts");
+    ini.SetBool("Dev", "UseBytecode", Engine.usingBytecode);
 
     ini.SetComment("Dev", "DataFileComment", "Determines what RSDK file will be loaded");
     ini.SetString("Dev", "DataFile", Engine.dataFile);

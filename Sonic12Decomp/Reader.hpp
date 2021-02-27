@@ -63,6 +63,7 @@ struct FileInfo {
     byte encryptionStringA[0x10];
     byte encryptionStringB[0x10];
     FileIO *cFileHandle;
+    bool fromDataFile;
 };
 
 struct RSDKFileInfo {
