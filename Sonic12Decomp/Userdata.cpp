@@ -393,7 +393,7 @@ void writeSettings()
         "Determines if applicable rendering modes (such as 3D floor from special stages) will render in \"High Quality\" mode or standard mode");
     ini.SetBool("Dev", "UseHQModes", Engine.useHQModes);
     ini.SetComment(
-        "Dev", "UseBytecode",
+        "Dev", "UseBytecodeComment",
         "Use bytecode instead of scripts");
     ini.SetBool("Dev", "UseBytecode", Engine.usingBytecode);
 
